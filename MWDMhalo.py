@@ -49,24 +49,27 @@ class ShiftedGaussian(object):
 		out[y < self.yesc] = self.evaluate_scaled(y[y < self.yesc])/prefactor
 		return out
 
-
-def compute_Dfactors(ra, dec, profile):
-	""" compute normalized D-factors for each line-of-sight """ 
-	D = np.zeros(ra.shape)
-	targets = coords.SkyCoord(ra=ra, dec=dec)
-	for index in range(D.size):
-		rho_los = lambda s: profile(s, targets[index].b, targets[index].l)	
-		Di, Di_error = np.quad(rho_los, 0, np.inf)
-		D[index] = Di
+def compute_halo_Dfactor(b, l, profile, d_s):
+	""" 
+	compute normalized D-factor for given line-of-sight,
+	assuming profile is a 1d radial mass distribution 
+	""" 
+	rho_los = lambda s: profile(rsq_from_galcenter(s, b, l, d_s))	
+	D, D_error = integ.quad(rho_los, 0, np.inf)
 	return D
 
-
-def NFWprofile_galcoords(s, b, l, d_s):
-	""" 
-	NFW profiled normalized to rho_s = 1 and r_s = 1,
-	given as a function of the line-of-sight distance s
-	from the earth, galactic coordinates b, l, and the 
-	distance d_s from the sun to the galactic center. 
+def NFWprofile(x):
 	"""
-	x_sq = s**2 + d_s**2 - 2*d_s*s*np.cos(b)*np.cos(l)
-	return 1.0/(np.sqrt(x_sq) + x_sq)
+	NFW profile normalzied to rho_s = 1 and r_s = 1
+	"""
+	return 1.0/(x*(1.0 + x))
+
+def rsq_from_galcenter(s, b, l, d_s):
+	""" 
+	Given a point p at galactic coords (b, l) and a 
+	line-of-sight distance s from the earth, this
+	returns the square of the distance from 
+	p to the galactic center, where d_s is the distance 
+	from the sun to the galactic center. 
+	"""
+	return s**2 + d_s**2 - 2*d_s*s*np.cos(b)*np.cos(l)
