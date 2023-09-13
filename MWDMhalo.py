@@ -1,6 +1,20 @@
 
 import numpy as np 
 import scipy.integrate as integ
+import astropy.coordinates as coord 
+
+
+class MWDecayFlux(object):
+	""" 
+	Generate model for the fluxes do to DM decays 
+	in the MW halo along several line-of-sight
+	"""
+	def __init__(ra, dec):
+		""" """
+		self.coords = SkyCoord(ra=np.asarray(ra)*u.degree, 
+			                   dec=np.asarray(dec)*u.degree)
+
+
 
 
 class ShiftedGaussian(object):
@@ -36,13 +50,23 @@ class ShiftedGaussian(object):
 		return out
 
 
-class NFWprofile(object):
-	def __init__(self, rhos, rs):
-		self.rhos = rhos
-		self.rs = rs 
+def compute_Dfactors(ra, dec, profile):
+	""" compute normalized D-factors for each line-of-sight """ 
+	D = np.zeros(ra.shape)
+	targets = coords.SkyCoord(ra=ra, dec=dec)
+	for index in range(D.size):
+		rho_los = lambda s: profile(s, targets[index].b, targets[index].l)	
+		Di, Di_error = np.quad(rho_los, 0, np.inf)
+		D[index] = Di
+	return D
 
-	def __call__(self, r):
-		r = np.asarray(r)
-		f1 = r/self.rs 
-		f2 = 1 + f1
-		return self.rhos/(f1*f2)
+
+def NFWprofile_galcoords(s, b, l, d_s):
+	""" 
+	NFW profiled normalized to rho_s = 1 and r_s = 1,
+	given as a function of the line-of-sight distance s
+	from the earth, galactic coordinates b, l, and the 
+	distance d_s from the sun to the galactic center. 
+	"""
+	x_sq = s**2 + d_s**2 - 2*d_s*s*np.cos(b)*np.cos(l)
+	return 1.0/(np.sqrt(x_sq) + x_sq)

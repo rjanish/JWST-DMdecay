@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
 """ Download data from JWST archives """
 
+import os  
+
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.io.fits as fits 
 
+import MWDMhalo as mw
+
 
 project_dir = "/home/rjanish/physics/optical-ir-axion-decay"
-JWSTdata_dir = "{}/data/mastDownload/JWST".format(project_dir)
+JWSTdata_dir = os.path.join(project_dir, "/data/mastDownload/JWST")
 
-datafile_path = ("{}/jw04426-o001_t001_nirspec_g140m-f100lp/"
-                 "jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits".format(JWSTdata_dir))
+def get_target_list(datadir):
+    data_filenames = []
+    for current_path, current_dirnames, current_filenames in os.walk(datadir):
+        data_filenames += current_filenames
+
+    for filename in data_filenames:
+        hdul=fits.open(datafile_path)
+        ra = hdul[0].header["RA"]
+        dec = hdul[0].header["DEC"]
+
 
 if __name__ == "__main__":
     hdul=fits.open(datafile_path)
