@@ -33,16 +33,20 @@ def get_target_list(datadir):
     Ntargets = len(datafile_paths)
     targets = table.Table(
         names=("name", "ra", "dec", "instrument", 
-               "detector", "filter", "grating", "int_time"), 
+               "detector", "filter", "grating", "int_time",
+               "lambda_min", "lambda_max"), 
         dtype=(str, float, float, str, 
-               str, str, str, float))
+               str, str, str, float,
+               float, float))
     for filename in datafile_paths:
         with fits.open(filename) as hdul:
             targets.add_row(
                 (hdul[0].header["TARGNAME"], hdul[0].header["TARG_RA"], 
                  hdul[0].header["TARG_DEC"], hdul[0].header["INSTRUME"], 
                  hdul[0].header["DETECTOR"], hdul[0].header["FILTER"], 
-                 hdul[0].header["GRATING"], hdul[0].header["EFFINTTM"]))
+                 hdul[0].header["GRATING"], hdul[0].header["EFFINTTM"],
+                 hdul[1].data["wavelength"][0],
+                 hdul[1].data["wavelength"][-1]))
     # compute D factors 
     coords = coord.SkyCoord(ra=targets["ra"]*u.degree,
                             dec=targets["dec"]*u.degree)
@@ -54,8 +58,9 @@ def get_target_list(datadir):
             targets[index]["b"], targets[index]["l"],
             mw.NFWprofile, r_sun/r_s)
     targets["D"] = Ds
-
-    print(targets)
+    # save metadata table
+    targets.write("targets.html", format="ascii.html", overwrite=True)
+    targets.write("targets.csv", format="ascii.csv", overwrite=True)
 
 if __name__ == "__main__":
     # hdul=fits.open(datafile_path)

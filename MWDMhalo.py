@@ -11,8 +11,6 @@ class MWDecayFlux(object):
 	"""
 	def __init__(ra, dec):
 		""" """
-		self.coords = SkyCoord(ra=np.asarray(ra)*u.degree, 
-			                   dec=np.asarray(dec)*u.degree)
 
 
 
