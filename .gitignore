@@ -311,6 +311,7 @@ TSWLatexianTemp*
 # figures 
 *.png 
 *.pdf 
+*.html
 
 #specific 
 AxionLimits/*
