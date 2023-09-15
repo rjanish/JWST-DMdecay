@@ -9,11 +9,17 @@ class MWDecayFlux(object):
 	Generate model for the fluxes do to DM decays 
 	in the MW halo along several line-of-sight
 	"""
-	def __init__(ra, dec):
+	def __init__(self, name, D, sigma_lambda):
 		""" """
+		self.name = name
+		self.D = D 
+		self.sigma_lambda = sigma_lambda
 
-
-
+	def __call__(self, lam, lam0, decay_rate):
+		arg = (lam - lam0)/self.sigma_lambda
+		norm = self.sigma_lambda*np.sqrt(2*np.pi)
+		sepectral_response = np.exp(-0.5*arg**2)/norm
+		return sepectral_response*self.D*decay_rate/(4*np.pi)
 
 class ShiftedGaussian(object):
 	""" 
