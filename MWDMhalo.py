@@ -3,34 +3,55 @@ import numpy as np
 import scipy.integrate as integ
 import astropy.coordinates as coord 
 
+import matplotlib.pyplot as plt
 
-class MWDecayFlux(object):
+
+def MWDecayFlux(lam, lam0, decay_rate, D, sigma_lam):
 	""" 
-	Generate model for the fluxes do to DM decays 
-	in the MW halo along several line-of-sight
+	Flux due to DM decays along a line-of-sight with
+	the given D-factor, assuming a Guassian (in wavelength)
+	spectral response with the given width. 
 	"""
-	def __init__(self, D, sigma_lambda):
-		""" """
-		self.D = D 
-		self.sigma_lambda = sigma_lambda
+	arg = (lam - lam0)/sigma_lam
+	norm = sigma_lam*np.sqrt(2*np.pi)
+	sepectral_response = (lam**2)*np.exp(-0.5*arg**2)/norm
+	return sepectral_response*D*decay_rate/(4*np.pi)
 
-	def __call__(self, lam, lam0, decay_rate):
-		arg = (lam - lam0)/self.sigma_lambda
-		norm = self.sigma_lambda*np.sqrt(2*np.pi)
-		sepectral_response = np.exp(-0.5*arg**2)/norm
-		return sepectral_response*self.D*decay_rate/(4*np.pi)
-
-class MWchisq(object):
+class MWchisq_nobackground(object):
 	"""
+	The chisq with no attempt to model background
+	(see Cirelli et al 2021, eqn 21)
 	"""
-	def __inti__(self, data, Ds):
+	def __init__(self, data, model):
 		self.data = data 
-		self.Ds = Ds 
+		self.model = model 
 
-	def __call__(self, lam0, decay_rate):
+	def __call__(self, decay_rate, lam0, shift=0.0):
 		total = 0.0 
-		for index, data_i in enumerate(self.data):
-			model = MWDecayFlux(self.Ds[index], )
+		for row in self.data:
+			valid = row["error"] > 0
+			model = self.model(row["lam"][valid], lam0, decay_rate, 
+				               row["D"], row["max_res"])
+			diff = model - row["sky"][valid]
+			diff[diff < 0] = 0.0
+			chisq_i = (diff/row["error"][valid])**2
+
+			# if np.any(chisq_i):
+			# 	fig, ax = plt.subplots(2)
+			# 	ax[0].plot(row["lam"][valid], row["sky"][valid], 
+			# 		       marker='.', color='k')
+			# 	ax[0].fill_between(
+			# 		row["lam"][valid], 
+			# 		row["sky"][valid] - 0.5*row["error"][valid],
+			# 		row["sky"][valid] + 0.5*row["error"][valid], 
+			# 		color='k', alpha=0.1)
+			# 	ax[0].plot(row["lam"][valid], model, 
+			# 		       marker='.', color='r')
+			# 	ax[1].plot(row["lam"][valid], chisq_i)
+			# 	plt.show()
+
+			total += np.sum(chisq_i)
+		return total - shift
 
 class ShiftedGaussian(object):
 	""" 
