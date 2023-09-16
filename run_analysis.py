@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" Download data from JWST archives """
+""" Run JWST DM search """
 
 import sys
 import os 
