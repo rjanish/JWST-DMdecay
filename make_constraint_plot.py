@@ -36,9 +36,10 @@ labels = {"Globular Clusters":["Globular Clusters", 1.1e-1, 7e-11, "0.4"],
           "CAST":["CAST", 1.1e-1, 3e-10, "0.8"]}
 
 if __name__ == "__main__":
-    new_limit_path = sys.argv[1]    
-    new_limit_name = os.path.splitext(new_limit_path)[0]
-    new_limit = np.loadtxt(new_limit_path)
+    run_name = sys.argv[1]    
+    conservtive_limit_path = ("{}/conservative/JWST-NIRSPEC-limits.dat"
+                              "".format(run_name))
+    conservative_limit = np.loadtxt(conservtive_limit_path)
     plt.rcParams['text.usetex'] = True
 
     limit_data = {}
@@ -61,7 +62,7 @@ if __name__ == "__main__":
         ax.text(labels[name][1], labels[name][2], 
                 labels[name][0], color=labels[name][3], size=10)
 
-    ax.fill_between(new_limit[:,0], new_limit[:,2], 
+    ax.fill_between(conservative_limit[:,0], conservative_limit[:,2], 
                     upper_edge, facecolor="indianred", linewidth=1,
                     alpha=0.8, edgecolor="darkred")
 
@@ -73,14 +74,14 @@ if __name__ == "__main__":
 
     ax.set_xlabel(r"$\displaystyle m_a\; [{\rm \tiny eV }]$", 
                   fontsize=14)
-    ax.text(3.75e-2, 2e-11, 
+    ax.text(3.7e-2, 2e-11, 
             r"$\displaystyle g_{a\gamma\gamma}$", 
             fontsize=20, rotation=0)
-    ax.text(3.5e-2, 6e-12, 
+    ax.text(3.45e-2, 6e-12, 
             r"$\displaystyle [{\rm \tiny GeV }^{-1}]$", 
             fontsize=13, rotation=0)
 
-    constraint_path = "{}-CONSTRAINTS.pdf".format(new_limit_name)
+    constraint_path = "{}/constraints.pdf".format(run_name)
     fig.savefig(constraint_path, dpi=300, bbox_inches="tight")
 
 

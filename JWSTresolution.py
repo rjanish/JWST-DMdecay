@@ -16,14 +16,16 @@ if __name__ == "__main__":
     calibration_paths = ["{}/{}".format(assume.resolution_dir, f) 
                          for f in os.listdir(assume.resolution_dir)
                          if f[-9:]=="disp.fits"]  
-    res_max = table.Table(dtype=[("grating", str), ("max_res", float)])
+    res_max = table.Table(dtype=[("grating", str), 
+                                 ("max_res", float),
+                                 ("min_fracres", float)])
     for path in calibration_paths:
         with fits.open(path) as hdul:
             grating = hdul[0].header["COMPNAME"].strip()
             lam = hdul[1].data["WAVELENGTH"]
             R = hdul[1].data["R"]
             res = lam/R
-            res_max.add_row([grating, np.max(res)])
+            res_max.add_row([grating, np.max(res), np.min(1.0/R)])
             save_path = ("{}/JWST-NIRSPEC-{}-resolution-resolved.dat"
                          "".format(assume.resolution_dir, grating))
             header = ("spectral resolution vs wavelength "

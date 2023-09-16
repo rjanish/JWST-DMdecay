@@ -2,6 +2,7 @@
 """ Run JWST DM search """
 
 
+import os
 import sys
 import time 
 
@@ -18,13 +19,20 @@ import conversions as convert
 
 if __name__ == "__main__":
     run_name = sys.argv[1]    
+    conservative_results_dir = "{}/conservative".format(run_name)
+    continuum_results_dir = "{}/continuum".format(run_name)
+    try:
+        os.mkdir(run_name)
+        os.mkdir(conservative_results_dir)
+        os.mkdir(continuum_results_dir)
+    except FileExistsError:
+        pass
 
     data, targets = JWSTparse.process_target_list(assume.data_dir)
-    # read in resolutions
-    max_res_table = io.ascii.read(assume.maxres_path)
-    max_res = {line["grating"]:line["max_res"] for line in max_res_table}
-    for row in data:
-        row["max_res"] = max_res[row["grating"]]
+    targets.write("{}/targets.html".format(run_name), 
+                  format="ascii.html", overwrite=True)
+    targets.write("{}/targets.dat".format(run_name), 
+                  format="ascii.csv", overwrite=True)
 
     # find conservative limit 
     chisq_nb = mw.MWchisq_nobackground(data, mw.MWDecayFlux)
@@ -66,13 +74,14 @@ if __name__ == "__main__":
     limit_decayrate = convert.fluxscale_to_invsec(limit, assume.rho_s, assume.r_s)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m)    
     
-    output_filename = "JWST-NIRSPEC-limits-{}.dat".format(run_name)
+    output_path = ("{}/JWST-NIRSPEC-limits.dat"
+                   "".format(conservative_results_dir))
     header = ("DM decay limits vs mass \n"
               "JWST NIRSPEC run {}\n"
               "mass [ev]    lifetime [sec]    "
               "g_a\\gamma\\gamma [GeV^-1] (for vanilla axion)"
               "".format(run_name))
-    np.savetxt(output_filename, 
+    np.savetxt(output_path, 
                np.column_stack((m, limit_decayrate, limit_g)),
                header=header)
 

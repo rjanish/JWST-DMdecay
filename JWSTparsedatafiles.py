@@ -21,6 +21,15 @@ def process_target_list(datadir):
     targets and important metadata data, compute D factors, 
     and extract all info needed for the DM analysis.  
     """
+    # read in resolutions
+    max_res_table = io.ascii.read(assume.maxres_path)
+    max_res = {line["grating"]:line["max_res"] for line in max_res_table}
+        # For now simply take the max resolution for each 
+        # grating as though uniform, and assume this is larger 
+        # than the DM intrisic width.  This is very close to true. 
+        # We can extend later to use the wavelength-dependent 
+        # resolution and convolve a finite DM line profile, but the
+        # results will not change appreciably 
     # find all data files 
     datafile_paths = []
     for current_path, current_dirnames, current_filenames in os.walk(datadir):
@@ -67,8 +76,8 @@ def process_target_list(datadir):
             mw.NFWprofile, assume.r_sun/assume.r_s)
         data[index]["D"] = Ds[index]
     targets["D"] = Ds
-    # save metadata table
-    targets.write("targets.html", format="ascii.html", overwrite=True)
-    targets.write("targets.dat", format="ascii.csv", overwrite=True)
+    # add resolutions 
+    for row in data:
+        row["max_res"] = max_res[row["grating"]]
     return data, targets 
 
