@@ -46,7 +46,7 @@ def process_target_list(datadir):
                str, str, str, float,
                float, float, str))
     print("found {} datafiles".format(len(datafile_paths)))
-    print("parsing...\n")
+    print("parsing...")
     data = []
     for path in datafile_paths:
         with io.fits.open(path) as hdul:
@@ -79,5 +79,6 @@ def process_target_list(datadir):
     # add resolutions 
     for row in data:
         row["max_res"] = max_res[row["grating"]]
+    print("done\n")
     return data, targets 
 

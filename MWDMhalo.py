@@ -35,21 +35,34 @@ class MWchisq_nobackground(object):
 			diff = model - row["sky"][valid]
 			diff[diff < 0] = 0.0
 			chisq_i = (diff/row["error"][valid])**2
+			total += np.sum(chisq_i)
+		return total - shift
 
-			# if np.any(chisq_i):
-			# 	fig, ax = plt.subplots(2)
-			# 	ax[0].plot(row["lam"][valid], row["sky"][valid], 
-			# 		       marker='.', color='k')
-			# 	ax[0].fill_between(
-			# 		row["lam"][valid], 
-			# 		row["sky"][valid] - 0.5*row["error"][valid],
-			# 		row["sky"][valid] + 0.5*row["error"][valid], 
-			# 		color='k', alpha=0.1)
-			# 	ax[0].plot(row["lam"][valid], model, 
-			# 		       marker='.', color='r')
-			# 	ax[1].plot(row["lam"][valid], chisq_i)
-			# 	plt.show()
+class MWchisq_powerlaw(object):
+	"""
+	The chisq with no attempt to model background
+	(see Cirelli et al 2021, eqn 21)
+	"""
+	def __init__(self, data, model):
+		self.data = data 
+		self.model = model 
+		self.Nsets = len(data)
 
+	def __call__(self, params, lam0, shift=0.0):
+		decay_rate = params[0]
+		A = params[1:1 + self.Nsets]
+		p = params[1 + self.Nsets:]
+		total = 0.0 
+		for index, row in enumerate(self.data):
+			valid = row["error"] > 0
+			dm = self.model(row["lam"][valid], lam0, decay_rate, 
+			                row["D"], row["max_res"])
+			lam_scaled = row["lam"][valid]
+			background = A[index]*(lam_scaled**p[index])
+			model = background + dm 
+			diff = model - row["sky"][valid]
+			diff[diff < 0] = 0.0
+			chisq_i = (diff/row["error"][valid])**2
 			total += np.sum(chisq_i)
 		return total - shift
 
