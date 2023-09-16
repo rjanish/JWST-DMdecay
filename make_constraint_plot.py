@@ -7,7 +7,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-AxionLimits_dir = "/home/rjanish/physics/AxionLimits/limit_data/AxionPhoton"
+import DMdecayJWST as assume  
+
 
 filenames = {"Globular Clusters":"GlobularClusters.txt", 
              "HST COB":"HST.txt",
@@ -42,7 +43,7 @@ if __name__ == "__main__":
 
     limit_data = {}
     for name in filenames:
-        path = os.path.join(AxionLimits_dir, filenames[name])
+        path = os.path.join(assume.AxionLimits_dir, filenames[name])
         try:
             limit_data[name] = np.loadtxt(path)
         except:
