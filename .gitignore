@@ -314,8 +314,6 @@ TSWLatexianTemp*
 *.html
 
 #specific 
-AxionLimits/*
-existing-limits/*
 data/*
-jwst_nirspec_ifu-available.html
 __pycache__/*
+old/*
