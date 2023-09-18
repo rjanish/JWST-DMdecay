@@ -3,6 +3,7 @@
 
 
 import os 
+import time  
 
 from astroquery.mast import Observations as obv 
 import astropy.table as table
@@ -14,12 +15,20 @@ if __name__ == "__main__":
     # download NIRSPEC IFU observations 
     allobv_table  = obv.query_criteria(
         obs_collection="JWST", 
-        instrument_name="NIRSPEC/IFU",
-        target_name=["GNZ11", "NGC-7319"])
+        instrument_name="NIRSPEC/IFU")
+        # target_name=["GNZ11", "NGC-7319"])
     target_obvs = table.Table(dtype=allobv_table.dtype)
+    Nobvs = len(allobv_table)
+    print("found {} canditate observations\n"
+          "searching for calibrated 1D spectra... ".format(Nobvs))
+    Nstages = 10
+    stage_size = Nobvs//Nstages
+    prev_stage = 0 
     target_products = table.Table(
         dtype=obv.get_product_list(allobv_table[0]).dtype)
-    for run in allobv_table:
+    t00 = time.time()
+    t0 = time.time()
+    for index, run in enumerate(allobv_table):
         product_list = obv.get_product_list(run)
         # select only those observation that have available 
         # fully calibrated (level 3) 1D extracted spectrum 
@@ -29,6 +38,16 @@ if __name__ == "__main__":
             target_obvs.add_row(run)
             target_products = table.vstack(
                 (target_products, product_list[mask]))
+        stage = index//stage_size
+        if stage > prev_stage:
+            dt = time.time() - t0 
+            t0 = time.time()
+            print("{}/{}: {:0.2f} sec".format(prev_stage + 1, Nstages, dt))
+            prev_stage = stage
+    dt_total = time.time() - t00
+    print("total: {:0.2f} min".format(dt_total/60.0))
+    print("found {} calibrated 1D spectra\n"
+          "downloading spectra... ".format(len(target_products)))
     obv.download_products(target_products, download_dir=assume.download_dir)
     for name, table_to_save in zip(
         ["selected_observations", "selected_data_products"],
