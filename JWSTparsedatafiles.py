@@ -62,6 +62,7 @@ def process_target_list(datadir):
             data_i["sky"] = hdul[1].data["BACKGROUND"]
             data_i["error"] = hdul[1].data["BKGD_ERROR"]  
             data_i["grating"] = hdul[0].header["GRATING"].strip()
+            data_i["name"] = hdul[0].header["TARGNAME"]
                 #check other error entries
             data.append(data_i)
     # compute D factors 
