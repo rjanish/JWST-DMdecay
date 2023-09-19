@@ -30,8 +30,16 @@ if __name__ == "__main__":
 
     data, targets = JWSTparse.process_target_list(assume.data_dir)
 
-    targets = targets[targets["name"] == "GN-z11"]
-    data = [run for run in data if run["name"] == "GN-z11"]
+    # only gnz11
+    # targets = targets[targets["name"] == "GN-z11"]
+    # data = [run for run in data if run["name"] == "GN-z11"]
+
+    # clone test
+    # targets = targets[targets["name"] == "GN-z11"]
+    # data_gnz11 = [run for run in data if run["name"] == "GN-z11"]
+    # data = [] 
+    # for copy in range(10**2):
+    #     data += data_gnz11
 
     print(len(data))
     print(len(targets))
@@ -49,8 +57,9 @@ if __name__ == "__main__":
     lam_test = np.arange(lam_min, lam_max+dlam, dlam)
 
     # find conservative limit 
-    chisq_nb = mw.MWchisq_nobackground(data, mw.MWDecayFlux)
-    limit = np.zeros(lam_test.shape)
+    reg_factor = 10
+    chisq_nb = mw.MWchisq_nobackground(data, mw.MWDecayFlux, reg_factor)
+    limit = np.ones(lam_test.shape)*np.nan
     Nsteps = limit.size
     Nstages = 10
     stage_size = int(np.ceil(Nsteps/Nstages))
@@ -60,14 +69,18 @@ if __name__ == "__main__":
     previous_stage = 0
     t0 = time.time()
     t00 = t0
+    method = "interp"
+    uppers = [1e-4, 1e-2, 1, 100]
     for index, lam_test_i in enumerate(lam_test):
-        try:
-            sol = opt.root_scalar(chisq_nb, 
-                                  args=(lam_test_i, chisq_threshold), 
-                                  bracket=[0, 1]) # arbitrary upper lim 
-            limit[index] = sol.root
-        except:
-            limit[index] = np.nan 
+        lower = 0.0
+        for upper in uppers:
+            if chisq_nb(upper, lam_test_i, chisq_threshold, method) > 0:
+                sol = opt.root_scalar(chisq_nb, 
+                                      args=(lam_test_i, chisq_threshold, method), 
+                                      bracket=[lower, upper]) # arbitrary upper lim 
+                limit[index] = sol.root
+                break
+            lower = upper
         stage = index//stage_size
         if stage > previous_stage:
             dt = time.time() - t0

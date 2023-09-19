@@ -24,7 +24,6 @@ def fluxscale_to_invsec(limit, rho_s, r_s):
 
     Double check all these units!!
     """
-    # return limit*(4.72e-23)/(rho_s*r_s)
     return limit*(5.93e-22)/(rho_s*r_s)
 
 def decayrate_to_axion_g(rate, m):

@@ -31,7 +31,7 @@ colors = {"Globular Clusters":"0.8",
 # name, x, y, color
 labels = {"Globular Clusters":["Globular Clusters", 1.1e-1, 7e-11, "0.4"],
           "HST COB":["HST", 8e0, 3e-11, "0.5"],
-          "MUSE":["MUSE", 2.9e0, 1e-10, "0.8"],
+          "MUSE":["MUSE", 2.8e0, 4e-12, "0.8"],
           "VIMOS":["VIMOS", 4.7e0, 1e-11, "0.4"],
           "CAST":["CAST", 1.1e-1, 3e-10, "0.8"]}
 
