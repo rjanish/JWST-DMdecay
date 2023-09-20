@@ -18,7 +18,13 @@ import conversions as convert
 
 
 if __name__ == "__main__":
-    run_name = sys.argv[1]    
+    run_name = sys.argv[1]
+    if run_name == "discrete":
+        target_filename = sys.argv[2]
+
+        
+    
+
     conservative_results_dir = "{}/conservative".format(run_name)
     continuum_results_dir = "{}/continuum".format(run_name)
     try:
@@ -29,18 +35,9 @@ if __name__ == "__main__":
         pass
 
     data, targets = JWSTparse.process_target_list(assume.data_dir)
-
-    # only gnz11
-    # targets = targets[targets["name"] == "GN-z11"]
-    # data = [run for run in data if run["name"] == "GN-z11"]
-
-    # clone test
-    # targets = targets[targets["name"] == "GN-z11"]
-    # data_gnz11 = [run for run in data if run["name"] == "GN-z11"]
-    # data = [] 
-    # for copy in range(10**2):
-    #     data += data_gnz11
-
+    if target != "all":
+            data = [row for row in data if data["name"] == target]
+            targets = targets[targets["name"] == target]
     print(len(data))
     print(len(targets))
 
@@ -57,8 +54,8 @@ if __name__ == "__main__":
     lam_test = np.arange(lam_min, lam_max+dlam, dlam)
 
     # find conservative limit 
-    reg_factor = 10
-    chisq_nb = mw.MWchisq_nobackground(data, mw.MWDecayFlux, reg_factor)
+    chisq_nb = mw.MWchisq_nobackground(data, mw.MWDecayFlux, 
+                                       "any positive")
     limit = np.ones(lam_test.shape)*np.nan
     Nsteps = limit.size
     Nstages = 10
@@ -69,14 +66,13 @@ if __name__ == "__main__":
     previous_stage = 0
     t0 = time.time()
     t00 = t0
-    method = "interp"
     uppers = [1e-4, 1e-2, 1, 100]
     for index, lam_test_i in enumerate(lam_test):
         lower = 0.0
         for upper in uppers:
-            if chisq_nb(upper, lam_test_i, chisq_threshold, method) > 0:
+            if chisq_nb(upper, lam_test_i, chisq_threshold) > 0:
                 sol = opt.root_scalar(chisq_nb, 
-                                      args=(lam_test_i, chisq_threshold, method), 
+                                      args=(lam_test_i, chisq_threshold), 
                                       bracket=[lower, upper]) # arbitrary upper lim 
                 limit[index] = sol.root
                 break

@@ -23,71 +23,27 @@ class MWchisq_nobackground(object):
 	The chisq with no attempt to model background
 	(see Cirelli et al 2021, eqn 21)
 	"""
-	def __init__(self, data, model, reg_factor):
+	def __init__(self, data, model, selector=None):
 		self.data = data 
 		self.model = model 
 		self.Nrows = len(data)
-		self.regularize_data(reg_factor)
+		self.selector = selector
 
-	def regularize_data(self, reg_factor):
-		lam_min = np.zeros(self.Nrows)
-		lam_max = np.zeros(self.Nrows)
-		dlam_min = np.zeros(self.Nrows)
-		for index, row in enumerate(self.data):
-			lam_min[index] = row["lam"][0]
-			lam_max[index] = row["lam"][1]
-			dlam_min[index] = np.min(row["lam"][1:] - row["lam"][:-1])
-		self.lam_start = np.min(lam_min)
-		self.lam_end = np.max(lam_max)
-		self.dlam = np.min(dlam_min)/reg_factor
-		self.lam = np.arange(self.lam_start, self.lam_end, self.dlam)
-		self.lam2D = np.repeat([self.lam], self.Nrows, axis=0)
-		self.reg_sky = np.nan*np.ones((self.Nrows, self.lam.size))
-		self.reg_error = np.nan*np.ones((self.Nrows, self.lam.size))
-		self.reg_D = np.nan*np.ones(self.Nrows) 
-		self.reg_res = np.nan*np.ones(self.Nrows)
-		for index, row in enumerate(self.data):
-			sky_func = interp.interp1d(row["lam"], row["sky"],
-				                       bounds_error=False, 
-				                       fill_value=np.nan)
-			self.reg_sky[index, :] = sky_func(self.lam)
-			error_func = interp.interp1d(row["lam"], row["error"],
-				                       bounds_error=False, 
-				                       fill_value=np.nan)  
-			  # change this to properly propagate the errors 
-			self.reg_error[index, :] = error_func(self.lam)
-			self.reg_D[index] = row["D"]
-			self.reg_res[index] = row["max_res"]
-
-	def __call__(self, decay_rate, lam0, shift=0.0, method=None):
-		if method == "loop":
-			total = 0.0 
-			for row in self.data:
+	def __call__(self, decay_rate, lam0, shift=0.0):
+		total = 0.0 
+		for row in self.data:
+			if self.selector == "any positive":
+				valid = (row["sky"] > 0) & (row["error"] > 0)
+			if self.selector == "strictly positive":
 				if np.any(row["sky"] < 0):
-					continue 
-					# I don't understand why of the observations 
-					# have negative sky spectra, but they do. These
-					# always contribute to chisq as defined here, since 
-					# the model gives a strictly postive flux, and as a 
-					# result they produce a chisq >> 1 for any DM decay 
-					# rate. We need to understand what these negative
-					# sky spectra mean. For now just skip them and only
-					# use the stricly postive spectra.  
-				valid = row["error"] > 0
-				model = self.model(row["lam"][valid], lam0, decay_rate, 
-					               row["D"], row["max_res"])
-				diff = model - row["sky"][valid]
-				diff[diff < 0] = 0.0
-				chisq_i = (diff/row["error"][valid])**2
-				total += np.sum(chisq_i)
-		elif method == "interp":
-			valid = (self.reg_sky > 0) & (self.reg_error > 0)
-			model = self.model(self.lam2D, lam0, decay_rate, 
-					           self.reg_D, self.reg_res)
-			diff = model[valid] - self.reg_sky[valid]
+					continue
+				valid = (row["sky"] > 0) & (row["error"] > 0)
+			model = self.model(row["lam"][valid], lam0, decay_rate, 
+				               row["D"], row["max_res"])
+			diff = model - row["sky"][valid]
 			diff[diff < 0] = 0.0
-			chisq_i = (diff/self.reg_error[valid])**2
-			total = np.sum(chisq_i)
+			chisq_i = (diff/row["error"][valid])**2
+			total += np.sum(chisq_i)
 		return total - shift
 
 class MWchisq_powerlaw(object):
@@ -98,12 +54,12 @@ class MWchisq_powerlaw(object):
 	def __init__(self, data, model):
 		self.data = data 
 		self.model = model 
-		self.Nsets = len(data)
+		self.Nrows = len(data)
 
 	def __call__(self, params, lam0, shift=0.0):
 		decay_rate = params[0]
-		A = params[1:1 + self.Nsets]
-		p = params[1 + self.Nsets:]
+		A = params[1:1 + self.Nrows]
+		p = params[1 + self.Nrows:]
 		total = 0.0 
 		for index, row in enumerate(self.data):
 			valid = row["error"] > 0
