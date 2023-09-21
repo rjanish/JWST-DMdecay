@@ -29,12 +29,12 @@ class MWchisq_nobackground(object):
 		self.Nrows = len(data)
 		self.selector = selector
 
-	def __call__(self, decay_rate, lam0, shift=0.0):
-		total = 0.0 
-		for row in self.data:
-			if self.selector == "any positive":
+	def __call__(self, decay_rate, lam0, shift=0.0, mode=None):
+		by_spectra = np.zeros(self.Nrows)
+		for index, row in enumerate(self.data):
+			if self.selector == "any":
 				valid = (row["sky"] > 0) & (row["error"] > 0)
-			if self.selector == "strictly positive":
+			if self.selector == "strictly":
 				if np.any(row["sky"] < 0):
 					continue
 				valid = (row["sky"] > 0) & (row["error"] > 0)
@@ -43,8 +43,11 @@ class MWchisq_nobackground(object):
 			diff = model - row["sky"][valid]
 			diff[diff < 0] = 0.0
 			chisq_i = (diff/row["error"][valid])**2
-			total += np.sum(chisq_i)
-		return total - shift
+			by_spectra[index] = np.sum(chisq_i)
+		if mode == "total":
+			return np.sum(by_spectra) - shift
+		elif mode == "itemized":
+			return by_spectra - shift
 
 class MWchisq_powerlaw(object):
 	"""
