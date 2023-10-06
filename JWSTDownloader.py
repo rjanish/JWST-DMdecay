@@ -15,7 +15,7 @@ if __name__ == "__main__":
     # download NIRSPEC IFU observations 
     allobv_table  = obv.query_criteria(
         obs_collection="JWST", 
-        instrument_name="NIRSPEC/IFU")
+        instrument_name=["NIRSPEC/IFU","NIRSPEC/MSA"])
         # target_name=["GNZ11", "NGC-7319"])
     target_obvs = table.Table(dtype=allobv_table.dtype)
     Nobvs = len(allobv_table)

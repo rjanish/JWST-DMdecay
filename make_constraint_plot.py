@@ -19,7 +19,7 @@ filenames = {"Globular Clusters":"GlobularClusters.txt",
              "CAST2":"CAST_highm.txt",
              "CAST3":"CAST.txt"}
 
-colors = {"Globular Clusters":"0.8", 
+colors = {"Globular Clusters":"0.4", 
           "HST COB":"0.75",
           "LeoT Heating":"0.6",
           "MUSE":"0.5", 
@@ -29,7 +29,7 @@ colors = {"Globular Clusters":"0.8",
           "CAST3":"0.6"}
 
 # name, x, y, color
-labels = {"Globular Clusters":["Globular Clusters", 1.1e-1, 7e-11, "0.4"],
+labels = {"Globular Clusters":["Stellar Evolution", 1.1e-1, 2.5e-11, "0.4"],
           "HST COB":["HST", 8e0, 3e-11, "0.5"],
           "MUSE":["MUSE", 2.8e0, 4e-12, "0.8"],
           "VIMOS":["VIMOS", 4.7e0, 1e-11, "0.4"],
@@ -56,8 +56,15 @@ if __name__ == "__main__":
     right_edge = 1.1e1
     fig, ax = plt.subplots()
     for name in limit_data:
-        ax.fill_between(limit_data[name][:,0], limit_data[name][:,1], 
-                        upper_edge, color=colors[name], linewidth=0)
+        if name == "Globular Clusters":
+            muse_left = limit_data["MUSE"][1, 0]
+            m_to_plot = np.array([left_edge, muse_left])
+            limit_to_plot = np.ones(2)*limit_data[name][0, 1]
+            ax.plot(m_to_plot, limit_to_plot, 
+                    color=colors[name], marker='', linestyle='dotted')
+        else:
+            ax.fill_between(limit_data[name][:,0], limit_data[name][:,1], 
+                            upper_edge, color=colors[name], linewidth=0)
     for name in labels:
         ax.text(labels[name][1], labels[name][2], 
                 labels[name][0], color=labels[name][3], size=10)
