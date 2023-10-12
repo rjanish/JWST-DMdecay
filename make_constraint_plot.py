@@ -40,6 +40,9 @@ if __name__ == "__main__":
     conservtive_limit_path = ("{}/conservative/JWST-NIRSPEC-limits.dat"
                               "".format(run_name))
     conservative_limit = np.loadtxt(conservtive_limit_path)
+    line_limit_path = ("{}/continuum/JWST-NIRSPEC-limits.dat"
+                              "".format(run_name))
+    line_limit = np.loadtxt(line_limit_path)
     plt.rcParams['text.usetex'] = True
 
     limit_data = {}
@@ -69,9 +72,12 @@ if __name__ == "__main__":
         ax.text(labels[name][1], labels[name][2], 
                 labels[name][0], color=labels[name][3], size=10)
 
+    ax.fill_between(line_limit[:,0], line_limit[:,2], 
+                    upper_edge, facecolor="blue", linewidth=1,
+                    alpha=0.6, edgecolor=None) 
     ax.fill_between(conservative_limit[:,0], conservative_limit[:,2], 
                     upper_edge, facecolor="indianred", linewidth=1,
-                    alpha=0.8, edgecolor="darkred")
+                    alpha=0.4, edgecolor="darkred")
 
     ax.set_ylim([lower_edge, upper_edge])
     ax.set_xlim([left_edge, right_edge])

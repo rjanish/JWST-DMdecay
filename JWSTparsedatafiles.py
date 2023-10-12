@@ -65,9 +65,14 @@ def process_target_list(datadir):
             data_i["name"] = hdul[0].header["TARGNAME"]
                 #check other error entries
             data.append(data_i)
+    # add resolutions 
+    for row in data:
+        row["max_res"] = max_res[row["grating"]]
+    print("done\n")
     # compute D factors 
     coords = coord.SkyCoord(ra=targets["ra"]*u.degree,
-                            dec=targets["dec"]*u.degree)
+                            dec=targets["dec"]*u.degree,
+                            distance=1.0*u.kpc)  # placeholder distance
     targets["b"] = coords.galactic.b.degree
     targets["l"] = coords.galactic.l.degree
     Ds = np.zeros(Ntargets)
@@ -77,9 +82,28 @@ def process_target_list(datadir):
             mw.NFWprofile, assume.r_sun/assume.r_s)
         data[index]["D"] = Ds[index]
     targets["D"] = Ds
-    # add resolutions 
-    for row in data:
-        row["max_res"] = max_res[row["grating"]]
-    print("done\n")
-    return data, targets 
+    # compute min distance from galactic center
+    b_rad = targets["b"]*(np.pi/180.0)
+    l_rad = targets["l"]*(np.pi/180.0) 
+    targets["b_impact"] = assume.r_sun*np.sqrt(1-np.cos(b_rad)**2*np.cos(l_rad)**2)
+    # compute relative velocity and apply doppler shift 
+    coords_galcen = coords.transform_to(assume.galcen)
+    coords_vec = np.asarray([coords_galcen.x.value,
+                             coords_galcen.y.value,
+                             coords_galcen.z.value])
+    diff_vec = coords_vec.T - assume.vec_sun
+    len_diff_vec = np.sqrt(np.sum(diff_vec**2, axis=1))
+    diff_hat = (diff_vec.T/len_diff_vec).T
+    v_parallel = np.sum(diff_hat*assume.v_sun, axis=1)
+    targets["v_rel"] = v_parallel # km/s, velocity of the sun along the target
+                                  # line-of-sight in galactocentric frame
+    for index in range(Ntargets):
+        data[index]["lam"] *= (1.0 - targets[index]["v_rel"]/assume.c_kms)
+        data[index]["max_res"] *= (1.0 - targets[index]["v_rel"]/assume.c_kms)
+        # apply doppler shift
+        # postive v_rel indicates sun is moving towards the line-of-sight
+        # (no need to rescale the spectra, as both the observed and 
+        #  model spectra are rescaled identically)
+    return data, targets
+    
 

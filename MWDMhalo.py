@@ -7,7 +7,7 @@ import astropy.coordinates as coord
 import matplotlib.pyplot as plt
 
 
-def MWDecayFlux(lam, lam0, decay_rate, D, sigma_lam):
+def MWDecayFlux_old(lam, lam0, decay_rate, D, sigma_lam):
 	""" 
 	Flux due to DM decays along a line-of-sight with
 	the given D-factor, assuming a Guassian (in wavelength)
@@ -17,6 +17,19 @@ def MWDecayFlux(lam, lam0, decay_rate, D, sigma_lam):
 	norm = sigma_lam*np.sqrt(2*np.pi)
 	sepectral_response = (lam**2).T*np.exp(-0.5*arg**2)/norm
 	return (sepectral_response*D*decay_rate/(4*np.pi)).T
+
+class MWDecayFlux(object):
+	""" 
+	Flux due to DM decays along a line-of-sight with
+	the given D-factor, assuming a Guassian (in wavelength)
+	spectral response with the given width. 
+	"""
+	def __init__(self, sigma_doppler, vesc, lam0, sigma_inst, D):
+		self.cs = ConvolvedSpectrum(sigma_doppler, vesc, lam0, sigma_inst)
+		self.D = D
+
+	def __call__(self, lam, rate):
+		return self.cs(lam)*self.D*rate/(2)  # 2 instead of 4pi -> convert dE to dnu
 
 class MWchisq_nobackground(object):
 	"""
@@ -77,36 +90,73 @@ class MWchisq_powerlaw(object):
 			total += np.sum(chisq_i)
 		return total - shift
 
-class ShiftedGaussian(object):
+class ShiftedGaussian_lambda(object):
 	""" 
 	Model for the spectrum due to two-photon decays 
 	for a gas of non-relativistic identical particles 
-	with a truncated Maxwellian velocity distrbution. 
+	with a truncated Maxwellian velocity distrbution.
+	This is df/dE as a functino of lambda 
 	"""
-	def __init__(self, sigma, vesc, m):
+	def __init__(self, sigma_v, vesc, lam0):
 		"""
 		sigma: Maxwellian velocity dispersion 
 		vesc: maximum speed 
 		m: mass of parent 
 		"""
-		self.sigma = sigma
-		self.vesc = vesc
-		self.m = m
-		self.w = 0.5*m*sigma
-		self.yesc = vesc/(sigma*np.sqrt(2)) 
+		self.w = sigma_v*lam0
+		self.lam_esc = vesc*lam0
+		self.lam0 = lam0
+		self.y_esc = vesc/(np.sqrt(2)*sigma_v)
 		# set normalization factor
-		integral = integ.quad(self.evaluate_scaled, 0, self.yesc)
-		self.N, self.N_error = np.asarray(integral)*2/np.sqrt(np.pi)
+		integral = integ.quad(self.scaled_speed_distribution, 
+			                  0, self.y_esc)
+		self.Nv, self.Nv_error = np.asarray(integral)*4/np.sqrt(np.pi)
+		# distribution factors
+		self.arg_max = 0.5*(self.lam_esc**2)/(self.w**2)
+		self.prefactor = (self.lam0**2)/(self.Nv*self.w*(2*np.pi)**1.5)
 
-	def evaluate_scaled(self, y):
-		return np.exp(-y**2) - np.exp(-self.yesc**2)
+	def scaled_speed_distribution(self, y):
+		return (y**2)*np.exp(-y**2)
 
-	def __call__(self, E):
-		E = np.asarray(E)
-		y = np.abs(E - 0.5*self.m)/(self.w*np.sqrt(2)) 
-		out = np.zeros(E.shape)
-		prefactor = self.N*self.w*np.sqrt(2*np.pi)
-		out[y < self.yesc] = self.evaluate_scaled(y[y < self.yesc])/prefactor
+	def __call__(self, lam):
+		lam = np.asarray(lam)
+		out = np.zeros(lam.shape)
+		in_range = np.abs(lam - self.lam0) < self.lam_esc
+		arg = 0.5*(lam[in_range] - self.lam0)**2/self.w**2
+		out[in_range] = self.prefactor*(np.exp(-arg) - np.exp(-self.arg_max))
+		return out
+
+class ConvolvedSpectrum(object):
+	""" 
+	Model for the spectrum due to two-photon decays 
+	for a gas of non-relativistic identical particles 
+	with a truncated Maxwellian velocity distrbution, 
+	convolved with a Gaussian instrumental response. 
+	"""
+	def __init__(self, sigma_doppler, vesc, lam0, sigma_inst):
+		"""
+		sigma: Maxwellian velocity dispersion 
+		vesc: maximum speed 
+		m: mass of parent 
+		"""
+		self.dfdE_doppler = ShiftedGaussian_lambda(sigma_doppler, vesc, lam0)
+		self.lam_min = lam0*(1 - vesc)
+		self.lam_max = lam0*(1 + vesc)
+		self.sigma_inst = sigma_inst
+		self.gauss_factor = 1.0/(sigma_inst*np.sqrt(2*np.pi))
+
+	def gaussian(self, lam):
+		return self.gauss_factor*np.exp(-lam**2/(2*self.sigma_inst**2))
+
+	def convolution_integrand(self, lam_prime, lam):
+		return self.dfdE_doppler(lam_prime)*self.gaussian(lam - lam_prime)
+
+	def __call__(self, lam):
+		out = np.zeros(lam.size)
+		for index, lam_i in enumerate(lam):
+			integral = integ.quad(self.convolution_integrand, 
+				                  self.lam_min, self.lam_max, args=(lam_i))
+			out[index] = integral[0]
 		return out
 
 def compute_halo_Dfactor(b, l, profile, d_s):
@@ -126,10 +176,11 @@ def NFWprofile(x):
 
 def rsq_from_galcenter(s, b, l, d_s):
 	""" 
-	Given a point p at galactic coords (b, l) and a 
-	line-of-sight distance s from the earth, this
+	Given a point p at galactic coords (b, l) in degrees 
+	and a line-of-sight distance s from the earth, this
 	returns the square of the distance from 
 	p to the galactic center, where d_s is the distance 
 	from the sun to the galactic center. 
 	"""
+	b_rad, l_rad = np.array([b, l])*(np.pi/180.0)
 	return s**2 + d_s**2 - 2*d_s*s*np.cos(b)*np.cos(l)
