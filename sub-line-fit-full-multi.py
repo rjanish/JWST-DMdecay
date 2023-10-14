@@ -82,10 +82,10 @@ def find_limits(window, padding, num_knots,
             continue
         if lmin < lstart[i]:
             lmin = lstart[i]
-            lmax = lmin + window
+            lmax = lmin*(1 + window)
         elif lend[i] < lmax:
             lmax = lend[i]
-            lmin = lmax - window
+            lmin = lmax*(1 - window)
         select = (lmin < spec["lam"]) & (spec["lam"] < lmax)
         spec_list.append(i)
         sky_list.append(spec["sky"][select])
@@ -159,16 +159,27 @@ def find_limits(window, padding, num_knots,
         knot_values = replace_centers(central_knots,
                                       best_line_knots, 
                                       centers)
-        current_withbest = line_chisq(best_rate, knot_values, knots, 
-                                      fixed_list, lam_list, sky_list, 
-                                      error_list, threshold)
-        print(current_withbest)
-        if current_withbest < -padding:
-            sol = opt.root_scalar(line_chisq, 
-                         args=(knot_values, knots, fixed_list, lam_list, 
-                               sky_list, error_list, threshold),
-                         bracket=[best_rate, 1e3])
-            return -sol.root
+        chisq_bestrate = line_chisq(best_rate, knot_values, knots, 
+                                    fixed_list, lam_list, sky_list, 
+                                    error_list, threshold)
+        if chisq_bestrate < -padding:
+            upper_brackets = 10.0**np.arange(-4, 1)
+            for upper_bracket in upper_brackets:
+                chisq_upper = line_chisq(upper_bracket, knot_values, knots, 
+                                         fixed_list, lam_list, sky_list, 
+                                         error_list, threshold)
+                if chisq_upper > padding:
+                    sol = opt.root_scalar(line_chisq, 
+                        args=(knot_values, knots, fixed_list, lam_list, 
+                              sky_list, error_list, threshold),
+                        bracket=[best_rate, upper_bracket])
+                    return -sol.root
+            print("failed to find upper lim\n"
+                  "lam0 = {}\n"
+                  "chisq(best_rate) = {}\n"
+                  "chise({}) = {}\n".format(lam0, chisq_bestrate, 
+                                            upper_bracket, chisq_upper))
+            return -best_rate
         else:
             return -best_rate
 
@@ -198,12 +209,14 @@ if __name__ == "__main__":
     lstart = [spec["lam"][0] for spec in data]
     lend = [spec["lam"][-1] for spec in data]
     dlam = np.min(lstart)*v_dm*0.5
+    # dlam = np.min(lstart)*v_dm*0.5*100  # run subsample for testing 
     test_lams = np.arange(np.min(lstart) + 0.5*dlam,
                           np.max(lend) - 0.5*dlam, dlam)
 
     loop_only = functools.partial(find_limits, 
                                   window, padding, num_knots,
                                   chisq_step, limit_guess)
+    print("fitting...")
     t0 = time.time()
     with mltproc.Pool() as pool:
         output = pool.map(loop_only, test_lams)    
@@ -216,7 +229,7 @@ if __name__ == "__main__":
     dt = time.time() - t0
     print("{} sec".format(dt))
 
-    limits = np.asarray([out[4][0] for out in loop_only])
+    limits = np.asarray([out[4][0] for out in output])
     m = convert.wavelength_to_mass(test_lams)
     limit_decayrate = convert.fluxscale_to_invsec(
         limits, assume.rho_s, assume.r_s)    

@@ -164,7 +164,7 @@ def compute_halo_Dfactor(b, l, profile, d_s):
 	compute normalized D-factor for given line-of-sight,
 	assuming profile is a 1d radial mass distribution 
 	""" 
-	rho_los = lambda s: profile(rsq_from_galcenter(s, b, l, d_s))	
+	rho_los = lambda s: profile(r_from_galcenter(s, b, l, d_s))	
 	D, D_error = integ.quad(rho_los, 0, np.inf)
 	return D
 
@@ -174,13 +174,13 @@ def NFWprofile(x):
 	"""
 	return 1.0/(x*(1.0 + x))
 
-def rsq_from_galcenter(s, b, l, d_s):
+def r_from_galcenter(s, b, l, d_s):
 	""" 
 	Given a point p at galactic coords (b, l) in degrees 
 	and a line-of-sight distance s from the earth, this
-	returns the square of the distance from 
-	p to the galactic center, where d_s is the distance 
+	returns the distance from p to the galactic center, 
+	where d_s is the distance 
 	from the sun to the galactic center. 
 	"""
 	b_rad, l_rad = np.array([b, l])*(np.pi/180.0)
-	return s**2 + d_s**2 - 2*d_s*s*np.cos(b)*np.cos(l)
+	return np.sqrt(s**2 + d_s**2 - 2*d_s*s*np.cos(b)*np.cos(l))
