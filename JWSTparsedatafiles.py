@@ -15,9 +15,9 @@ import DMdecayJWST as assume
 import MWDMhalo as mw
 
 
-def process_target_list(datadir):
+def process_target_list(datafile_paths):
     """ 
-    Parse a directory tree of JWST datafile, compile table of 
+    Parse list of JWST datafiles, compile table of 
     targets and important metadata data, compute D factors, 
     and extract all info needed for the DM analysis.  
     """
@@ -30,12 +30,6 @@ def process_target_list(datadir):
         # We can extend later to use the wavelength-dependent 
         # resolution and convolve a finite DM line profile, but the
         # results will not change appreciably 
-    # find all data files 
-    datafile_paths = []
-    for current_path, current_dirnames, current_filenames in os.walk(datadir):
-        datafile_paths += [os.path.join(current_path, f) 
-                           for f in current_filenames
-                           if f[-5:]==".fits"]
     # start table with metadata from data files  
     Ntargets = len(datafile_paths)
     targets = table.Table(
@@ -107,3 +101,11 @@ def process_target_list(datadir):
     return data, targets
     
 
+def get_fits_from_tree(datadir):
+    """ get all *.fits files from directory tree starting at datadir """
+    datafile_paths = []
+    for current_path, current_dirnames, current_filenames in os.walk(datadir):
+        datafile_paths += [os.path.join(current_path, f) 
+                           for f in current_filenames
+                           if f[-5:]==".fits"]
+    return datafile_paths

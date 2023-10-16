@@ -42,6 +42,10 @@ resolution_dir = "data/resolution"
 maxres_path = "data/resolution/JWST-NIRSPEC-max-resolution.dat"
 AxionLimits_dir = "/home/rjanish/physics/AxionLimits/limit_data/AxionPhoton"
 
-
+# GN-z11 data 
+gnz11_filesnames = [
+    "jw04426-o001_t001_nirspec_g235m-f170lp/jw04426-o001_t001_nirspec_g235m-f170lp_x1d.fits",
+    "jw04426-o001_t001_nirspec_g140m-f100lp/jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits"]
+gnz11_paths = ["{}/{}".format(data_dir, f) for f in gnz11_filesnames]
 
 
