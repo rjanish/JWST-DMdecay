@@ -5,6 +5,7 @@ import sys
 import os 
 
 import numpy as np
+import scipy as sp 
 import matplotlib.pyplot as plt
 
 import DMdecayJWST as assume  
@@ -78,6 +79,20 @@ if __name__ == "__main__":
     ax.fill_between(conservative_limit[:,0], conservative_limit[:,2], 
                     upper_edge, facecolor="indianred", linewidth=1,
                     alpha=0.4, edgecolor="darkred")
+
+    # scale estimate 
+    time = np.asarray([2, 15])*(3e7) #sec
+    style= ['dashed', 'dotted']
+    t0 = 2e3 #sec
+    efficency = 0.1
+    width = 500
+    for t, s in zip(time, style):
+        scaled_limit = line_limit[:, 2]*(t*efficency/t0)**(-0.25)
+        smoothed_limit = sp.ndimage.gaussian_filter(
+            scaled_limit, width)
+        ax.plot(line_limit[:, 0], smoothed_limit,
+            color="blue", linewidth=1, linestyle=s,
+            marker='', alpha=0.6) 
 
     ax.set_ylim([lower_edge, upper_edge])
     ax.set_xlim([left_edge, right_edge])

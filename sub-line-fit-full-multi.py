@@ -194,10 +194,8 @@ def find_limits(window, padding, num_knots,
 
 if __name__ == "__main__":
 
-    full_data, full_targets = JWSTparse.process_target_list(assume.data_dir)
-    data  = [d for d  in full_data if d["name"] == "GN-z11"]
-    target  = [t for t  in full_targets if t["name"] == "GN-z11"]
-
+    data, target = assume.parse_gnz11()
+    
     width_factor = 150
     v_dm = 7e-4
     window = width_factor*v_dm
@@ -208,8 +206,8 @@ if __name__ == "__main__":
 
     lstart = [spec["lam"][0] for spec in data]
     lend = [spec["lam"][-1] for spec in data]
-    dlam = np.min(lstart)*v_dm*0.5
-    # dlam = np.min(lstart)*v_dm*0.5*100  # run subsample for testing 
+    # dlam = np.min(lstart)*v_dm*0.5
+    dlam = np.min(lstart)*v_dm*0.5*25  # run subsample for testing 
     test_lams = np.arange(np.min(lstart) + 0.5*dlam,
                           np.max(lend) - 0.5*dlam, dlam)
 
@@ -235,7 +233,7 @@ if __name__ == "__main__":
         limits, assume.rho_s, assume.r_s)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m) 
 
-    run_name = "test_gnz11_strict"
+    run_name = "gnz11_final"
     line_results_dir = "{}/continuum".format(run_name)
 
     limits_path = ("{}/JWST-NIRSPEC-limits.dat"

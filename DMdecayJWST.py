@@ -5,6 +5,8 @@ import numpy as np
 import astropy.coordinates as coord 
 import astropy.units as u
 
+import JWSTparsedatafiles as JWSTparse 
+
 # parameters to normalize D factor and galactic DM distrbution
 # any density distribution is given as rho(r) = rho_s f(r/r_s)
 # for a purely dimensionless distribution f(x)
@@ -47,5 +49,16 @@ gnz11_filesnames = [
     "jw04426-o001_t001_nirspec_g235m-f170lp/jw04426-o001_t001_nirspec_g235m-f170lp_x1d.fits",
     "jw04426-o001_t001_nirspec_g140m-f100lp/jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits"]
 gnz11_paths = ["{}/{}".format(data_dir, f) for f in gnz11_filesnames]
-
+gnz11_split = 1.65978
+gnz11_min = 0.99
+def parse_gnz11(mid=gnz11_split): 
+    """ Truncate the blue GN-z11 spectrum at the start of the red one """
+    data, targets = JWSTparse.process_target_list(gnz11_paths)
+    for spec in data:
+        if spec["lam"][0] < mid:
+            select = (gnz11_min < spec["lam"]) & (spec["lam"] < mid)
+            spec["lam"] = spec["lam"][select]
+            spec["sky"] = spec["sky"][select]
+            spec["error"] = spec["error"][select]
+    return data, targets 
 
