@@ -25,12 +25,12 @@ colors = {"Globular Clusters":"0.4",
           "LeoT Heating":"0.6",
           "MUSE":"0.5", 
           "VIMOS":"0.65",
-          "CAST1":"0.6",
-          "CAST2":"0.6",
-          "CAST3":"0.6"}
+          "CAST1":"0.5",
+          "CAST2":"0.5",
+          "CAST3":"0.5"}
 
 # name, x, y, color
-labels = {"Globular Clusters":["Stellar Evolution", 1.1e-1, 6e-11, "0.4"],
+labels = {"Globular Clusters":["Stellar Evolution", 1.1e-1, 5.5e-11, "0.4"],
           "HST COB":["HST", 8e0, 3e-11, "0.5"],
           "MUSE":["MUSE", 2.8e0, 4e-12, "0.8"],
           "VIMOS":["VIMOS", 4.7e0, 1e-11, "0.4"],
@@ -98,8 +98,8 @@ if __name__ == "__main__":
     width = 1000
     for t, s in zip(time, style):
         scaled_limit = line_limit[:, 2]*(t*efficency/t0)**(-0.25)
-        smoothed_limit = sp.ndimage.gaussian_filter(
-            scaled_limit, width)
+        smoothed_limit = np.exp(
+            sp.ndimage.gaussian_filter(np.log(scaled_limit), width))
         ax.plot(line_limit[:, 0], smoothed_limit,
             color="blue", linewidth=1, linestyle=s,
             marker='', alpha=0.6) 
@@ -119,12 +119,12 @@ if __name__ == "__main__":
         color="firebrick",
         fontsize=10, rotation=0)
 
-    ax.text(5.5e-1, 1.9e-12, 
+    ax.text(5.5e-1, 1.7e-12, 
         "2 year", 
         color="darkblue",
         fontsize=10, rotation=0)
 
-    ax.text(5.1e-1, 1.05e-12, 
+    ax.text(5.1e-1, 1e-12, 
         "15 year", 
         color="darkblue",
         fontsize=10, rotation=0)
@@ -132,12 +132,14 @@ if __name__ == "__main__":
 
     ax.set_xlabel(r"$\displaystyle m_a\; [{\rm \tiny eV }]$", 
                   fontsize=14)
-    ax.text(3.7e-2, 2e-11, 
-            r"$\displaystyle g_{a\gamma\gamma}$", 
-            fontsize=18, rotation=0)
-    ax.text(3.45e-2, 6e-12, 
-            r"$\displaystyle [{\rm \tiny GeV }^{-1}]$", 
-            fontsize=13, rotation=0)
+    ax.set_ylabel(r"$\displaystyle g_{a\gamma\gamma}\; [{\rm \tiny GeV }^{-1}]$", 
+                  fontsize=14)
+    # ax.text(5e-2, 5e-11, 
+    #         r"$\displaystyle g_{a\gamma\gamma}$", 
+    #         fontsize=18, rotation=0)
+    # ax.text(4.5e-2, 2e-11, 
+    #         r"$\displaystyle [{\rm \tiny GeV }^{-1}]$", 
+    #         fontsize=14, rotation=0)
 
     constraint_path = "{}/constraints.pdf".format(run_name)
     fig.savefig(constraint_path, dpi=300, bbox_inches="tight")
