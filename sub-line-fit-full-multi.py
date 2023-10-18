@@ -95,7 +95,9 @@ def find_limits(window, padding, num_knots,
                            sigma_from_fwhm(spec["max_res"], lam0)])
     num_specs = len(sky_list)
     if num_specs == 0:
-        return [[lmin, lmax], spec_list, [], [], [], []]
+        return [[lmin, lmax], spec_list, [None], [None], 
+                [np.nan, None], [np.nan, None]]
+                ## why is this executing ???
 
     # fit continuum
     knots = np.zeros(num_specs*num_knots)
@@ -206,8 +208,8 @@ if __name__ == "__main__":
 
     lstart = [spec["lam"][0] for spec in data]
     lend = [spec["lam"][-1] for spec in data]
-    # dlam = np.min(lstart)*v_dm*0.5
-    dlam = np.min(lstart)*v_dm*0.5*25  # run subsample for testing 
+    dlam = np.min(lstart)*v_dm*0.5
+    # dlam = np.min(lstart)*v_dm*0.5*50  # run subsample for testing 
     test_lams = np.arange(np.min(lstart) + 0.5*dlam,
                           np.max(lend) - 0.5*dlam, dlam)
 
