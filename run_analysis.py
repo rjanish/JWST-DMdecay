@@ -64,7 +64,8 @@ if __name__ == "__main__":
     #             select = select | (targets["name"] == target)
     #         targets = targets[select]
 
-    data, targets = assume.parse_gnz11()
+    # data, targets = assume.parse_gnz11()
+    data, targets = assume.parse_sub(assume.all_paths)
 
     targets.write("{}/targets.html".format(run_name), 
                   format="ascii.html", overwrite=True)
@@ -80,11 +81,22 @@ if __name__ == "__main__":
     lam_list = extract_list(data, "lam")
     error_list = extract_list(data, "error")
 
-    frac_mass_step = 1e-3
-    lam_min = np.min([np.min(lam) for lam in lam_list])
-    lam_max = np.max([np.max(lam) for lam in lam_list])
-    dlam = lam_max*frac_mass_step
-    lam_test = np.arange(lam_min, lam_max+dlam, dlam)
+    # frac_mass_step = 1e-3
+    # lam_min = np.min([np.min(lam) for lam in lam_list])
+    # lam_max = np.max([np.max(lam) for lam in lam_list])
+    # dlam = lam_max*frac_mass_step
+    # lam_test = np.arange(lam_min, lam_max+dlam, dlam)
+
+    lstart = [spec["lam"][0] for spec in data]
+    lend = [spec["lam"][-1] for spec in data]
+    l_initial = np.min(lstart)
+    l_final = np.max(lend)
+    lam_test = [l_initial]
+    while lam_test[-1] < l_final:
+        dlam_i = 2*np.min([sigma_from_fwhm(spec["max_res"], lam_test[-1]) 
+                           for spec in data])*50 #rescale for testing
+        lam_test.append(lam_test[-1] + dlam_i)
+    lam_test = np.asarray(lam_test[1:-1]) # the last one is always outside the range
 
     # find conservative limit 
     # chisq_nb = mw.MWchisq_nobackground(data, mw.MWDecayFlux, positives_mode)

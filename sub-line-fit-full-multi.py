@@ -68,7 +68,7 @@ def replace_centers(central_knots, best_line_knots, centers):
     return knot_values
 
 def find_limits(window, padding, num_knots, 
-                chisq_step, limit_guess, lam0):
+                chisq_step, limit_guess, data, lam0):
     # extract line search region 
     sky_list = []
     lam_list = []
@@ -96,7 +96,7 @@ def find_limits(window, padding, num_knots,
     num_specs = len(sky_list)
     if num_specs == 0:
         return [[lmin, lmax], spec_list, [None], [None], 
-                [np.nan, None], [np.nan, None]]
+                [np.nan, None], [np.nan, None], np.nan]
                 ## why is this executing ???
 
     # fit continuum
@@ -141,6 +141,15 @@ def find_limits(window, padding, num_knots,
             bounds = (lower_bound, upper_bound))
     best_line_knots = line_fit["x"][:-1]
     best_rate = line_fit["x"][-1] 
+
+    # compare chisq 
+    best_fit_chisq = line_chisq(best_rate, best_line_knots, knots, 
+                                fixed_list, lam_list, 
+                                sky_list, error_list)
+    no_fit_chisq = line_chisq(0.0, best_knot_values, knots, 
+                              fixed_list, lam_list, 
+                              sky_list, error_list)
+    delta_chisq = no_fit_chisq - best_fit_chisq
 
     # marganilize over continuum params 
     best_chisq = line_chisq(best_rate, best_line_knots, knots, 
@@ -192,11 +201,12 @@ def find_limits(window, padding, num_knots,
     limit_knots = best_line_knots.copy()
     limit_knots[centers] = maximize_rate_sol.x
     return [[lmin, lmax], spec_list, knots, error_scaling, 
-            [limit, limit_knots], [best_rate, best_line_knots]]
+            [limit, limit_knots], [best_rate, best_line_knots],
+            delta_chisq]
 
 if __name__ == "__main__":
 
-    data, target = assume.parse_gnz11()
+    data, target = assume.parse_sub(assume.all_paths)
     
     width_factor = 150
     v_dm = 7e-4
@@ -208,15 +218,24 @@ if __name__ == "__main__":
 
     lstart = [spec["lam"][0] for spec in data]
     lend = [spec["lam"][-1] for spec in data]
-    dlam = np.min(lstart)*v_dm*0.5
-    # dlam = np.min(lstart)*v_dm*0.5*50  # run subsample for testing 
-    test_lams = np.arange(np.min(lstart) + 0.5*dlam,
-                          np.max(lend) - 0.5*dlam, dlam)
+    l_initial = np.min(lstart)
+    l_final = np.max(lend)
+
+    # dlam = l_initial*v_dm*0.5*50  # run subsample for testing 
+    # test_lams = np.arange(l_initial + 0.5*dlam,
+    #                       l_final - 0.5*dlam, dlam)
+
+    test_lams = [l_initial]
+    while test_lams[-1] < l_final:
+        dlam_i = 2*np.min([sigma_from_fwhm(spec["max_res"], test_lams[-1]) 
+                           for spec in data]) #rescale for testing
+        test_lams.append(test_lams[-1] + dlam_i)
+    test_lams = np.asarray(test_lams[1:-1]) # the last one is always outside the range
 
     loop_only = functools.partial(find_limits, 
                                   window, padding, num_knots,
-                                  chisq_step, limit_guess)
-    print("fitting...")
+                                  chisq_step, limit_guess, data)
+    print("scanning {} mass trials...".format(len(test_lams)))
     t0 = time.time()
     with mltproc.Pool() as pool:
         output = pool.map(loop_only, test_lams)    
@@ -235,7 +254,7 @@ if __name__ == "__main__":
         limits, assume.rho_s, assume.r_s)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m) 
 
-    run_name = "gnz11_final"
+    run_name = "gnz11_ngc6552_final"
     line_results_dir = "{}/continuum".format(run_name)
 
     limits_path = ("{}/JWST-NIRSPEC-limits.dat"
@@ -248,4 +267,24 @@ if __name__ == "__main__":
     np.savetxt(limits_path, 
                np.column_stack((m, limit_decayrate, limit_g)),
                header=limits_header)
+
+    bestfit = np.asarray([out[5][0] for out in output])
+    bestfit_decayrate = convert.fluxscale_to_invsec(
+        bestfit, assume.rho_s, assume.r_s)    
+    bestfit_g = convert.decayrate_to_axion_g(bestfit_decayrate, m) 
+    delta_chisqs = np.asarray([out[6] for out in output])
+
+    bestfits_path = ("{}/JWST-NIRSPEC-bestfits.dat"
+                     "".format(line_results_dir))
+    bestfits_header = ("DM decay best fits vs mass \n"
+                       "JWST NIRSPEC run {}\n"
+                       "lambda0 [micron]    mass [ev]    lifetime [sec]    "
+                       "g_a\\gamma\\gamma [GeV^-1] (for vanilla axion)    "
+                       "d(chisq)"
+                       "".format(run_name))
+    np.savetxt(bestfits_path, 
+               np.column_stack((test_lams, m, 
+                                bestfit_decayrate, bestfit_g,
+                                delta_chisqs)),
+               header=bestfits_header)
 

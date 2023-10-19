@@ -48,14 +48,30 @@ AxionLimits_dir = "/home/rjanish/physics/AxionLimits/limit_data/AxionPhoton"
 gnz11_filesnames = [
     "jw04426-o001_t001_nirspec_g235m-f170lp/jw04426-o001_t001_nirspec_g235m-f170lp_x1d.fits",
     "jw04426-o001_t001_nirspec_g140m-f100lp/jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits"]
+
+ngc6552_filesnames = [
+    "jw01039-o005_t001_miri_ch4-shortmediumlong/jw01039-o005_t001_miri_ch4-shortmediumlong_x1d.fits",
+    "jw01039-o005_t001_miri_ch1-shortmediumlong/jw01039-o005_t001_miri_ch1-shortmediumlong_x1d.fits",
+    "jw01039-o005_t001_miri_ch2-shortmediumlong/jw01039-o005_t001_miri_ch2-shortmediumlong_x1d.fits",
+    "jw01039-o005_t001_miri_ch3-shortmediumlong/jw01039-o005_t001_miri_ch3-shortmediumlong_x1d.fits"]
+
+
+
+
+
+
+
 gnz11_paths = ["{}/{}".format(data_dir, f) for f in gnz11_filesnames]
 gnz11_split = 1.65978
 gnz11_min = 0.99
-def parse_gnz11(mid=gnz11_split): 
+
+all_paths = ["{}/{}".format(data_dir, f) for f in gnz11_filesnames + ngc6552_filesnames]
+
+def parse_sub(paths, mid=gnz11_split): 
     """ Truncate the blue GN-z11 spectrum at the start of the red one """
-    data, targets = JWSTparse.process_target_list(gnz11_paths)
+    data, targets = JWSTparse.process_target_list(paths)
     for spec in data:
-        if spec["lam"][0] < mid:
+        if (spec["lam"][0] < mid) and (spec["name"] == "GN-z11"):
             select = (gnz11_min < spec["lam"]) & (spec["lam"] < mid)
             spec["lam"] = spec["lam"][select]
             spec["sky"] = spec["sky"][select]

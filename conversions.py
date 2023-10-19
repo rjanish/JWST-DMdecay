@@ -32,3 +32,10 @@ def decayrate_to_axion_g(rate, m):
     axion-two photon coupling in GeV^-1 
     """ 
     return 366.1*np.sqrt(rate)/(m**1.5)
+
+def axion_g_to_decayrate(g, m):
+    """ 
+    convert axion-two photon coupling in GeV^-1 and axion mass 
+    in eV to the decay rate in sec^-1    
+    """ 
+    return (m**3)*(g/366.1)**2

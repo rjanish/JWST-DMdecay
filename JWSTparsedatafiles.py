@@ -44,24 +44,33 @@ def process_target_list(datafile_paths):
     data = []
     for path in datafile_paths:
         with io.fits.open(path) as hdul:
+            try:  # filter and grating exist only for NIRSpec
+                filter_name = hdul[0].header["FILTER"].strip()
+                grating_name = hdul[0].header["GRATING"].strip()
+            except:
+                filter_name = "None"
+                grating_name = "None"
             targets.add_row(
                 (hdul[0].header["TARGNAME"], hdul[0].header["TARG_RA"], 
                  hdul[0].header["TARG_DEC"], hdul[0].header["INSTRUME"], 
-                 hdul[0].header["DETECTOR"], hdul[0].header["FILTER"], 
-                 hdul[0].header["GRATING"], hdul[0].header["EFFINTTM"],
+                 hdul[0].header["DETECTOR"], filter_name, 
+                 grating_name, hdul[0].header["EFFINTTM"],
                  hdul[1].data["WAVELENGTH"][0],
                  hdul[1].data["WAVELENGTH"][-1], path))
             data_i = {}
             data_i["lam"] = hdul[1].data["WAVELENGTH"]
             data_i["sky"] = hdul[1].data["BACKGROUND"]
             data_i["error"] = hdul[1].data["BKGD_ERROR"]  
-            data_i["grating"] = hdul[0].header["GRATING"].strip()
+            data_i["grating"] = grating_name
             data_i["name"] = hdul[0].header["TARGNAME"]
                 #check other error entries
             data.append(data_i)
     # add resolutions 
     for row in data:
-        row["max_res"] = max_res[row["grating"]]
+        try:
+            row["max_res"] = max_res[row["grating"]]
+        except:
+            row["max_res"] = 0.005 # guess for miri
     print("done\n")
     # compute D factors 
     coords = coord.SkyCoord(ra=targets["ra"]*u.degree,

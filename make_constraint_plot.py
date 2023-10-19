@@ -9,7 +9,10 @@ import scipy as sp
 import matplotlib.pyplot as plt
 
 import DMdecayJWST as assume  
+import conversions as convert
 
+
+decay_only = ["HST COB", "MUSE", "VIMOS"]
 
 filenames = {"Globular Clusters":"GlobularClusters.txt", 
              "HST COB":"HST.txt",
@@ -56,38 +59,36 @@ if __name__ == "__main__":
 
     lower_edge = 1e-13
     upper_edge = 1e-9
-    left_edge = 1e-1
-    right_edge = 1.1e1
-    fig, ax = plt.subplots()
+    left_edge = 6e-1
+    right_edge = 6e0
+    fig, [ax_t, ax_g] = plt.subplots(2, 1)
+
     for name in limit_data:
         if name == "Globular Clusters":
             muse_left = limit_data["MUSE"][1, 0]
             m_to_plot = np.array([left_edge, muse_left])
             limit_to_plot = np.ones(2)*limit_data[name][0, 1]
-            ax.plot(m_to_plot, limit_to_plot, 
+            ax_g.plot(m_to_plot, limit_to_plot, 
                     color=colors[name], marker='', 
                     linestyle='dotted', linewidth=1.5,
                     alpha=0.6)
         else:
-            ax.fill_between(limit_data[name][:,0], limit_data[name][:,1], 
+            ax_g.fill_between(limit_data[name][:,0], limit_data[name][:,1], 
                             upper_edge, color=colors[name], linewidth=0)
     for name in labels:
-        ax.text(labels[name][1], labels[name][2], 
+        ax_g.text(labels[name][1], labels[name][2], 
                 labels[name][0], color=labels[name][3], size=10)
 
-    ax.fill_between(line_limit[:,0], line_limit[:,2], 
+    ax_g.fill_between(line_limit[:,0], line_limit[:,2], 
                     upper_edge, facecolor="firebrick", 
                     linewidth=1, alpha=0.85, edgecolor=None)
 
-    # ax.plot(line_limit[:,0], line_limit[:,2], 
-            # color="firebrick", linewidth=1)
-
-    ax.vlines(conservative_limit[[0, -1], 0],
+    ax_g.vlines(conservative_limit[[0, -1], 0],
               conservative_limit[[0, -1], 2],
               [upper_edge, upper_edge],
               color="darkred", linewidth=0.75)
 
-    ax.plot(conservative_limit[:,0], conservative_limit[:,2], 
+    ax_g.plot(conservative_limit[:,0], conservative_limit[:,2], 
             color="darkgreen", linewidth=1)
 
     # scale estimate 
@@ -95,54 +96,90 @@ if __name__ == "__main__":
     style= ['dashed', 'dotted']
     t0 = 2e3 #sec
     efficency = 0.1
-    width = 1000
+    width = 300
     for t, s in zip(time, style):
         scaled_limit = line_limit[:, 2]*(t*efficency/t0)**(-0.25)
         smoothed_limit = np.exp(
             sp.ndimage.gaussian_filter(np.log(scaled_limit), width))
-        ax.plot(line_limit[:, 0], smoothed_limit,
+        ax_g.plot(line_limit[:, 0], smoothed_limit,
             color="blue", linewidth=1, linestyle=s,
             marker='', alpha=0.6) 
 
-    ax.set_ylim([lower_edge, upper_edge])
-    ax.set_xlim([left_edge, right_edge])
-    ax.set_yscale('log')
-    ax.set_xscale('log')
+    ax_g.set_ylim([lower_edge, upper_edge])
+    ax_g.set_xlim([left_edge, right_edge])
+    ax_g.set_yscale('log')
+    ax_g.set_xscale('log')
 
-    ax.text(4e-1, 2.8e-11, 
+    ax_g.text(4e-1, 2.8e-11, 
             "Total Flux", 
             color="darkgreen",
             fontsize=10, rotation=0)
 
-    ax.text(2.75e-1, 6e-12, 
+    ax_g.text(2.75e-1, 6e-12, 
         "Continuum Model", 
         color="firebrick",
         fontsize=10, rotation=0)
 
-    ax.text(5.5e-1, 1.7e-12, 
+    ax_g.text(5.5e-1, 1.7e-12, 
         "2 year", 
         color="darkblue",
         fontsize=10, rotation=0)
 
-    ax.text(5.1e-1, 1e-12, 
+    ax_g.text(5.1e-1, 1e-12, 
         "15 year", 
         color="darkblue",
         fontsize=10, rotation=0)
 
 
-    ax.set_xlabel(r"$\displaystyle m_a\; [{\rm \tiny eV }]$", 
+    ax_g.set_xlabel(r"$\displaystyle m_a\; [{\rm \tiny eV }]$", 
                   fontsize=14)
-    ax.set_ylabel(r"$\displaystyle g_{a\gamma\gamma}\; [{\rm \tiny GeV }^{-1}]$", 
+    ax_g.set_ylabel(r"$\displaystyle g_{a\gamma\gamma}\; [{\rm \tiny GeV }^{-1}]$", 
                   fontsize=14)
-    # ax.text(5e-2, 5e-11, 
-    #         r"$\displaystyle g_{a\gamma\gamma}$", 
-    #         fontsize=18, rotation=0)
-    # ax.text(4.5e-2, 2e-11, 
-    #         r"$\displaystyle [{\rm \tiny GeV }^{-1}]$", 
-    #         fontsize=14, rotation=0)
+
+
+    lifetime_upper_edge = 1e30
+    lifetime_lower_edge = 1e23
+
+    for name in decay_only:
+        rate_limit = convert.axion_g_to_decayrate(limit_data[name][:,1], 
+                                                  limit_data[name][:,0])
+        ax_t.fill_between(limit_data[name][:,0], lifetime_lower_edge,
+                        rate_limit**-1, color=colors[name], linewidth=0)
+
+
+    ax_t.fill_between(line_limit[:,0], line_limit[:,1]**-1, 
+                    upper_edge, facecolor="firebrick", 
+                    linewidth=1, alpha=0.85, edgecolor=None)
+
+    ax_t.vlines(conservative_limit[[0, -1], 0],
+              conservative_limit[[0, -1], 1]**-1,
+              [upper_edge, upper_edge],
+              color="darkred", linewidth=0.75)
+
+    ax_t.plot(conservative_limit[:,0], conservative_limit[:,1]**-1, 
+            color="darkgreen", linewidth=1)
+
+    # scale estimate 
+    for t, s in zip(time, style):
+        scaled_limit = (line_limit[:, 1]**-1)*(t*efficency/t0)**(0.5)
+        smoothed_limit = np.exp(
+            sp.ndimage.gaussian_filter(np.log(scaled_limit), width))
+        ax_t.plot(line_limit[:, 0], smoothed_limit,
+            color="blue", linewidth=1, linestyle=s,
+            marker='', alpha=0.6) 
+
+    ax_t.set_ylim([lifetime_lower_edge, lifetime_upper_edge])
+    ax_t.set_xlim([left_edge, right_edge])
+    ax_t.set_yscale('log')
+    ax_t.set_xscale('log')
+    # lifetime_constraint_path = "{}/lifetime_constraints.pdf".format(run_name)
+    # fig.savefig(lifetime_constraint_path, dpi=300, bbox_inches="tight")
+
+    ax_t.set_xlabel(r"$\displaystyle m_{\rm DM}\; [{\rm \tiny eV }]$", 
+                  fontsize=14)
+    ax_t.set_ylabel(r"$\displaystyle \tau \; [{\rm \tiny sec }]$", 
+                  fontsize=14)
 
     constraint_path = "{}/constraints.pdf".format(run_name)
+    fig.set_size_inches(8, 12)
     fig.savefig(constraint_path, dpi=300, bbox_inches="tight")
-
-
-
