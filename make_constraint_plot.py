@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     lower_edge = 1e-13
     upper_edge = 1e-9
-    left_edge = 6e-1
+    left_edge = 5e-1
     right_edge = 6e0
     fig, [ax_t, ax_g] = plt.subplots(2, 1)
 
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     style= ['dashed', 'dotted']
     t0 = 2e3 #sec
     efficency = 0.1
-    width = 300
+    width = 150
     for t, s in zip(time, style):
         scaled_limit = line_limit[:, 2]*(t*efficency/t0)**(-0.25)
         smoothed_limit = np.exp(
