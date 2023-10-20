@@ -55,12 +55,6 @@ ngc6552_filesnames = [
     "jw01039-o005_t001_miri_ch2-shortmediumlong/jw01039-o005_t001_miri_ch2-shortmediumlong_x1d.fits",
     "jw01039-o005_t001_miri_ch3-shortmediumlong/jw01039-o005_t001_miri_ch3-shortmediumlong_x1d.fits"]
 
-
-
-
-
-
-
 gnz11_paths = ["{}/{}".format(data_dir, f) for f in gnz11_filesnames]
 gnz11_split = 1.65978
 gnz11_min = 0.99
