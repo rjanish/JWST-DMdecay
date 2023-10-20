@@ -2,18 +2,39 @@
 # coding: utf-8
 
 import numpy as np 
+from scipy.special import erfc, erfcinv
+
+p = lambda chisq: 0.5*erfc(np.sqrt(0.5*chisq))
 
 bestfits_path = "gnz11_final/continuum/JWST-NIRSPEC-bestfits.dat"
 
 bestfits = np.loadtxt(bestfits_path)
 chisqs = bestfits[:, 4]
-detection = chisqs > (6.18)**2
-print("num detections: {}".format(np.sum(detection)))
+num_trials = chisqs.size 
+# find 5-sigma local detections
+Ns = 5
+detections = chisqs > Ns**2
+Ndetect = np.sum(detections)
+print("num detections: {}".format(Ndetect))
+for detection in bestfits[detections, :]:
+	lam = detection[0]
+	chisq = detection[4]
+	print("\nlam = {:0.2f}, d(chisq) = {:0.2f}"
+		  "".format(lam, chisq))
+	# global significance
+	p_local = p(chisq)
+	p_global = p_local*num_trials
+	Z_global = np.sqrt(2)*erfcinv(2*p_global)
+	print("    sigma_local  = {:0.2f}\n" 
+		  "    sigma_global = {:0.2f}"
+		  "".format(np.sqrt(chisq), Z_global))
 
-bestfits_detection = bestfits[detection, :]
 
-line_lams = bestfits_detection[:, 0]
-print("detection wavelengths:")
-print(np.unique(np.round(line_lams, 3)))
-print("rough detection levels")
-print(np.unique(np.round(bestfits_detection[:, 4], 3)))
+
+# limits diagonostics 
+limits_path = "gnz11_final/continuum/JWST-NIRSPEC-limits.dat"
+limits = np.loadtxt(limits_path)
+strongest_m = bestfits[np.argsort(limits[:, 2]), 0]
+strongest_g = limits[np.argsort(limits[:, 2]), 2]
+for l, g in zip(strongest_m[:10], strongest_g[:10]):
+	print(l, g)
