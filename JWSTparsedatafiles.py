@@ -82,8 +82,8 @@ def process_target_list(datafile_paths):
     for index in range(Ntargets):
         Ds[index] = mw.compute_halo_Dfactor(
             targets[index]["b"], targets[index]["l"],
-            mw.NFWprofile, assume.r_sun/assume.r_s)
-        data[index]["D"] = Ds[index]*assume.rho_s*assume.r_s
+            mw.NFWprofile, assume.r_sun/assume.r_s)*assume.rho_s*assume.r_s
+        data[index]["D"] = Ds[index]
     targets["D"] = Ds
     # compute min distance from galactic center
     b_rad = targets["b"]*(np.pi/180.0)

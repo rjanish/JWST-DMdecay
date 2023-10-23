@@ -30,7 +30,10 @@ def chisq_dm_totalflux(rate, lam0, fixed_list, x_list,
         resid = np.zeros(model.shape)
         dm_large = model > y_list[i]
         resid[dm_large] = ((model[dm_large] - y_list[i][dm_large]) / 
-                           (2.5*sigma_y_list[i][dm_large])) # scaled error
+                           (sigma_y_list[i][dm_large])) 
+            # use unscaled error - this doesn't matter much here, 
+            # the result depends on the error at less-than-O(1)
+            # level so long as error < flux
         total += np.sum(resid**2)
     return total - shift
 
@@ -65,7 +68,7 @@ if __name__ == "__main__":
     #         targets = targets[select]
 
     # data, targets = assume.parse_gnz11()
-    data, targets = assume.parse_sub(assume.all_paths)
+    data, targets = assume.parse_sub(assume.gnz11_paths )
 
     targets.write("{}/targets.html".format(run_name), 
                   format="ascii.html", overwrite=True)
@@ -74,7 +77,7 @@ if __name__ == "__main__":
     Nrows = len(data)
     print("analyzing {} spectra".format(Nrows))
 
-    chisq_threshold = 4
+    chisq_threshold = 2.71 #4
 
     extract_list = lambda list_of_dicts, key: [d[key] for d in list_of_dicts]
     sky_list = extract_list(data, "sky")
@@ -94,7 +97,7 @@ if __name__ == "__main__":
     lam_test = [l_initial]
     while lam_test[-1] < l_final:
         dlam_i = 2*np.min([sigma_from_fwhm(spec["max_res"], lam_test[-1]) 
-                           for spec in data])*50 #rescale for testing
+                           for spec in data]) #rescale for testing
         lam_test.append(lam_test[-1] + dlam_i)
     lam_test = np.asarray(lam_test[1:-1]) # the last one is always outside the range
 
@@ -145,7 +148,7 @@ if __name__ == "__main__":
     print("total time: {:0.1f} min".format(dt_total))
     # convert to physics units
     m = convert.wavelength_to_mass(lam_test)
-    limit_decayrate = convert.fluxscale_to_invsec(limit, assume.rho_s, assume.r_s)    
+    limit_decayrate = convert.fluxscale_to_invsec(limit)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m)    
     # output 
     limits_path = ("{}/JWST-NIRSPEC-limits.dat"
@@ -220,7 +223,7 @@ if __name__ == "__main__":
     # print("total time: {:0.1f} min".format(dt_total))
     # # convert to physics units
     # m = convert.wavelength_to_mass(lam_test)
-    # limit_decayrate = convert.fluxscale_to_invsec(limit, assume.rho_s, assume.r_s)    
+    # limit_decayrate = convert.fluxscale_to_invsec(limit)    
     # limit_g = convert.decayrate_to_axion_g(limit_decayrate, m)    
     # # output 
     # limits_path = ("{}/JWST-NIRSPEC-limits.dat"

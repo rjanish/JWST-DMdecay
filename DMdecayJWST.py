@@ -16,10 +16,10 @@ r_s = 24.0 # kpc
 # velocity distribution 
 sigma_v_kms = 160.0 # km/s, the asympotitc circular velocity 
                     #       is v0 = sqrt(2) sigma = 220 km/s
-vesc_kms = 510.0    # km/s
+# vesc_kms = 510.0    # km/s
 c_kms = 3.0e5       # km/s
 sigma_v = sigma_v_kms/c_kms
-vesc = vesc_kms/c_kms
+# vesc = vesc_kms/c_kms
 
 # define galactocentric corrdinate frame 
 r_sun = 8.1    # kpc, distance from the sun to the galactic center

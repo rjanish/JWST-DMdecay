@@ -39,7 +39,7 @@ labels = {"Globular Clusters":["Stellar Evolution", 4.6e-1, 5.5e-11, "0.4"],
           # "HST COB":["HST", 8e0, 3e-11, "0.5"],
           "MUSE":["MUSE", 3.1e0, 2e-11, "0.8"],
           "VIMOS":["VIMOS", 4.7e0, 2e-11, "0.4"],
-          "CAST":["CAST", 5.5e-1, 1e-9, "0.8"]}
+          "CAST":["CAST", 5.5e-1, 4e-10, "0.8"]}
 
 if __name__ == "__main__":
     run_name = sys.argv[1]    
@@ -60,7 +60,7 @@ if __name__ == "__main__":
             limit_data[name] = np.loadtxt(path, delimiter=",")
 
     lower_edge = 1e-13
-    upper_edge = 5e-9
+    upper_edge = 1e-9
     left_edge = 4.5e-1
     right_edge = 6e0
     fig, [ax_t, ax_g] = plt.subplots(2, 1)
@@ -102,6 +102,7 @@ if __name__ == "__main__":
     t0 = 2e3 #sec
     efficency = 0.01
     width = 150
+    print("estimate for g:")
     for t, s in zip(time, style):
         scaled_limit = line_limit[:, 2]*(t*efficency/t0)**(-0.25)
         smoothed_limit = np.exp(
@@ -109,33 +110,38 @@ if __name__ == "__main__":
         ax_g.plot(line_limit[:, 0], smoothed_limit,
             color="blue", linewidth=1, linestyle=s,
             marker='', alpha=0.6) 
+        print("    {:d} yr:  {:0.2e} - {:0.2e}"
+              "".format(int(t/3e7), 
+                        np.min(smoothed_limit), 
+                        np.max(smoothed_limit)))
+    print()
 
     ax_g.set_ylim([lower_edge, upper_edge])
     ax_g.set_xlim([left_edge, right_edge])
     ax_g.set_yscale('log')
     ax_g.set_xscale('log')
 
-    ax_g.text(1e0, 6.5e-11, 
+    ax_g.text(1e0, 13e-11, 
             "Total Flux", 
             color="black",
             fontsize=13, rotation=0)
 
-    ax_g.text(5.4e-1, 1.2e-11, 
-        "Continuum", 
+    ax_g.text(5e-1, 1e-11, 
+        "Continuum Model", 
         color="firebrick",
         fontsize=14, rotation=0)
-    ax_g.text(6.35e-1, 5e-12, 
-        "Model", 
-        color="firebrick",
-        fontsize=13, rotation=0)
+    # ax_g.text(6.35e-1, 6e-12, 
+    #     "Model", 
+    #     color="firebrick",
+    #     fontsize=13, rotation=0)
 
 
-    ax_g.text(2.15e0, 2.8e-12, 
+    ax_g.text(2.15e0, 4.7e-12, 
         "Current", 
         color="darkblue",
         fontsize=12, rotation=0)
 
-    ax_g.text(8e-1, 7e-13, 
+    ax_g.text(8e-1, 1.5e-12, 
         "15 year", 
         color="darkblue",
         fontsize=13, rotation=0)
@@ -147,7 +153,7 @@ if __name__ == "__main__":
                   fontsize=16)
 
 
-    lifetime_upper_edge = 1e30
+    lifetime_upper_edge = 4e29
     lifetime_lower_edge = 1e24
 
     for name in decay_only:
@@ -171,6 +177,7 @@ if __name__ == "__main__":
             color="Black", linewidth=2)
 
     # scale estimate 
+    print("estimate for tau:")
     for t, s in zip(time, style):
         scaled_limit = (line_limit[:, 1]**-1)*(t*efficency/t0)**(0.5)
         smoothed_limit = np.exp(
@@ -178,28 +185,32 @@ if __name__ == "__main__":
         ax_t.plot(line_limit[:, 0], smoothed_limit,
             color="blue", linewidth=1, linestyle=s,
             marker='', alpha=0.6) 
+        print("    {:d} yr:  {:0.2e} - {:0.2e}"
+              "".format(int(t/3e7), 
+                        np.min(smoothed_limit), 
+                        np.max(smoothed_limit)))
 
-    ax_t.text(9e-1, 1e25, 
+    ax_t.text(9e-1, 0.25e25, 
             "Total Flux", 
             color="black",
             fontsize=14, rotation=0)
 
-    ax_t.text(5.4e-1, 1e27, 
+    ax_t.text(5.4e-1, 0.25e27, 
         "Continuum", 
         color="firebrick",
         fontsize=14, rotation=0)   
 
-    ax_t.text(6.25e-1, 3.5e26, 
+    ax_t.text(6.25e-1, 1e26, 
         "Model", 
         color="firebrick",
         fontsize=14, rotation=0)
 
-    ax_t.text(6.1e-1, 1.5e28, 
+    ax_t.text(6.1e-1, 0.25e28, 
         "Current", 
         color="darkblue",
         fontsize=14, rotation=0)
 
-    ax_t.text(2e0, 2.2e28, 
+    ax_t.text(2e0, 0.5e28, 
         "15 year", 
         color="darkblue",
         fontsize=14, rotation=0)

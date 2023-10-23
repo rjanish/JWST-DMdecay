@@ -246,46 +246,49 @@ def find_raw_limit(setup_params, data, lam0):
 
 def find_pc_limit(Ntrials, Nbins, power_threshold, 
                  setup_params, data, fit_region):
-    [lam0, lam_list_msk, error_list_msk, 
-     knots, best_knots, spec_list] = fit_region
-    num_knots = setup_params["num_knots"]
-    guess = np.concatenate((best_knots, [0.0])) # fit starting
+    try:
+        [lam0, lam_list_msk, error_list_msk, 
+         knots, best_knots, spec_list] = fit_region
+        num_knots = setup_params["num_knots"]
+        guess = np.concatenate((best_knots, [0.0])) # fit starting
 
-    # generate mock data    
-    upper_limits = np.nan*np.ones(Ntrials)
-    for trial in range(Ntrials):
-        mock_data = []
-        trial_sky_list_msk = []
-        for i, spec_i in enumerate(spec_list):
-            mock_data.append({})
-            mock_data[-1]["max_res"] = data[spec_i]["max_res"]
-            mock_data[-1]["D"] = data[spec_i]["D"]
-            mock_data[-1]["lam"] = lam_list_msk[i]
-            mock_data[-1]["error"] = error_list_msk[i]
-            start = i*num_knots
-            end = (i + 1)*num_knots
-            Npts = error_list_msk[i].size
-            draw = np.random.normal(size=Npts)*error_list_msk[i]
-            continuum = interp.CubicSpline(knots[start:end], 
-                                           best_knots[start:end])
-            mock_data[-1]["sky"] = continuum(lam_list_msk[i]) + draw
-        out = find_raw_limit(setup_params, mock_data, lam0)
-        upper_limits[trial] = out[4][0]
+        # generate mock data    
+        upper_limits = np.nan*np.ones(Ntrials)
+        for trial in range(Ntrials):
+            mock_data = []
+            trial_sky_list_msk = []
+            for i, spec_i in enumerate(spec_list):
+                mock_data.append({})
+                mock_data[-1]["max_res"] = data[spec_i]["max_res"]
+                mock_data[-1]["D"] = data[spec_i]["D"]
+                mock_data[-1]["lam"] = lam_list_msk[i]
+                mock_data[-1]["error"] = error_list_msk[i]
+                start = i*num_knots
+                end = (i + 1)*num_knots
+                Npts = error_list_msk[i].size
+                draw = np.random.normal(size=Npts)*error_list_msk[i]
+                continuum = interp.CubicSpline(knots[start:end], 
+                                               best_knots[start:end])
+                mock_data[-1]["sky"] = continuum(lam_list_msk[i]) + draw
+            out = find_raw_limit(setup_params, mock_data, lam0)
+            upper_limits[trial] = out[4][0]
 
-    # integrate histogram
-    hist = np.histogram(upper_limits, bins=Nbins)
-    midpoints = 0.5*(hist[1][1:] +  hist[1][:-1])
-    pdf  = interp.interp1d(midpoints, hist[0], 
-                           bounds_error=False, fill_value=(0, 0))
-    rate_max = np.max(midpoints)
-    norm = integ.quad(pdf, 0, rate_max,
-                      epsrel=1e-4, epsabs=1e-4, limit=500)[0]
-    cdf_threshold = lambda gamma, threshold: (
-        integ.quad(pdf, 0, gamma, epsrel=1e-4, epsabs=1e-4, 
-                   limit=500)[0]/norm - threshold)
-    sol = opt.root_scalar(cdf_threshold, args=(power_threshold,),
-                          bracket=[0, rate_max])
-    return [lam0, sol.root]
+        # integrate histogram
+        hist = np.histogram(upper_limits, bins=Nbins)
+        midpoints = 0.5*(hist[1][1:] +  hist[1][:-1])
+        pdf  = interp.interp1d(midpoints, hist[0], 
+                               bounds_error=False, fill_value=(0, 0))
+        rate_max = np.max(midpoints)
+        norm = integ.quad(pdf, 0, rate_max,
+                          epsrel=1e-4, epsabs=1e-4, limit=500)[0]
+        cdf_threshold = lambda gamma, threshold: (
+            integ.quad(pdf, 0, gamma, epsrel=1e-4, epsabs=1e-4, 
+                       limit=500)[0]/norm - threshold)
+        sol = opt.root_scalar(cdf_threshold, args=(power_threshold,),
+                              bracket=[0, rate_max])
+        return [lam0, sol.root]
+    except:
+        return [np.nan, np.nan]
 
 
 if __name__ == "__main__":
@@ -299,12 +302,12 @@ if __name__ == "__main__":
     setup_params["window"] = width_factor*v_dm
     setup_params["padding"] = 1e-8
     setup_params["num_knots"] = 5
-    setup_params["chisq_step"] = 4 #2.71 
+    setup_params["chisq_step"] = 2.71 #4 
     setup_params["limit_guess"] = [1e-5, 1e-3]
     setup_params["max_clip_iters"] = 100
     setup_params["clipping_factor"] = 3
     # pc limit params 
-    pc_step_factor = 5 # subsampling factor for computing pc limit
+    pc_step_factor = 1 # subsampling factor for computing pc limit
     Ntrials = 10**2
     Nbins = 15
     power_threshold = 0.1587
@@ -362,11 +365,9 @@ if __name__ == "__main__":
 
     # physical conversion 
     m = convert.wavelength_to_mass(test_lams)
-    limit_decayrate = convert.fluxscale_to_invsec(
-        final_limits, assume.rho_s, assume.r_s)    
+    limit_decayrate = convert.fluxscale_to_invsec(final_limits)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m) 
-    bestfit_decayrate = convert.fluxscale_to_invsec(
-        bestfit, assume.rho_s, assume.r_s)    
+    bestfit_decayrate = convert.fluxscale_to_invsec(bestfit)    
     bestfit_g = convert.decayrate_to_axion_g(bestfit_decayrate, m) 
 
     # write output 

@@ -7,35 +7,49 @@ def wavelength_to_mass(lam):
     convert two-photon decay wavelength in microns to 
     progeniter mass in ev, via lam = 4pi/m
     """
-    return 2.46/lam
+    return 2.46/lam # eV
 
-def fluxscale_to_invsec(limit, rho_s, r_s):
+def fluxscale_to_invsec(limit):
     """ 
-    Convert flux scale limit in MJy/(sr micron kpc GeV/cm^3)
-    do a decay rate in 1/sec. This assumes the D-factors 
-    were normalized by the given rho_s and r_s values.
-    The "flux scale" G is 
-      dphi/dnu dOmega = 
-          (G/4pi) (df/dnu * W) D
-    where D here is dimensionless, its overall scale being factored
-    out as rho_s r_s, df/dnu is the decay spectrum and W the 
-    instrumental response function.  G is thus related to the 
-    decay rate Gamma as G = Gamma rho_s r_s.  
-
-    Double check all these units!!
+    The code computes the decay rate G via 
+        Phi = dphi/(dnu dOmega)
+            = (G/4pi) (df/dnu * W) D
+    The quantites are input in the following units:
+        D = Din GeV/cm^3 kpc
+        (df/dnu * W) = S_in micron
+    Note that though df/dnu is 'per frequency', we express it and 
+    then evaluate it in the code as a function of wavelength, so
+    its units are in microns, the wavelenth unit used in the code. 
+        Phi = Phi_in MJy 
+    This is "really" MJy/sr, but the sr is in a sense conventional
+    so we drop it in this comparison.  Another way to see it: suppose
+    the instrument gave us a measure of Phi in MJy/sr over a solid 
+    angle Omega.  Then we would compute  
+        Phi Omega = (G/4pi) (df/dnu * W) D Omega
+    and both sides are now in honest-to-God MJy, no sr involved. 
+    But this is exactly equilavent to the above.  So G is computed 
+    by the code to be 
+        G_out = (4 pi Phi_in) / (S_in D_in)
+    and the units of G_out are 
+        G = G_out (MJy cm^3 / micron GeV kpc) 
+    We want to convert this into 1/sec, 
+        G = Ginvsec (1/sec)
+        Ginvsec = G_out (MJy cm^3 sec/ micron GeV kpc) 
+    The quantity in parentesis is unitless, and is the scale 
+    factor used here. See unit-converstion.nb for evaluation. 
     """
-    return limit*(5.93e-22)/(rho_s*r_s)
+    return limit*(5.93e-22) # 1/sec
 
 def decayrate_to_axion_g(rate, m):
     """ 
     convert decay rate in sec^-1 and axion mass in eV to the
     axion-two photon coupling in GeV^-1 
     """ 
-    return 366.1*np.sqrt(rate)/(m**1.5)
+    return 366.1*np.sqrt(rate)/(m**1.5) # 1/GeV
 
 def axion_g_to_decayrate(g, m):
     """ 
     convert axion-two photon coupling in GeV^-1 and axion mass 
     in eV to the decay rate in sec^-1    
     """ 
-    return (m**3)*(g/366.1)**2
+    return (m**3)*(g/366.1)**2 # 1/sec
