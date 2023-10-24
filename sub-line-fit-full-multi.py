@@ -302,7 +302,8 @@ if __name__ == "__main__":
     setup_params["window"] = width_factor*v_dm
     setup_params["padding"] = 1e-8
     setup_params["num_knots"] = 5
-    setup_params["chisq_step"] = 2.71 #4 
+    # setup_params["chisq_step"] = 2.71 
+    setup_params["chisq_step"] = 4 
     setup_params["limit_guess"] = [1e-5, 1e-3]
     setup_params["max_clip_iters"] = 100
     setup_params["clipping_factor"] = 3

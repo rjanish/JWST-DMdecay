@@ -77,7 +77,9 @@ if __name__ == "__main__":
     Nrows = len(data)
     print("analyzing {} spectra".format(Nrows))
 
-    chisq_threshold = 2.71 #4
+    # chisq_threshold = 2.71 
+    chisq_threshold = 4
+
 
     extract_list = lambda list_of_dicts, key: [d[key] for d in list_of_dicts]
     sky_list = extract_list(data, "sky")
