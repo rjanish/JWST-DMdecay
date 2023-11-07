@@ -1,0 +1,7 @@
+
+[paths]
+download_dir = "data"
+data_dir = "data/mastDownload/JWST"
+resolution_dir = "data/resolution"
+maxres_path = "data/resolution/JWST-NIRSPEC-max-resolution.dat"
+AxionLimits_dir = "../AxionLimits/limit_data/AxionPhoton"

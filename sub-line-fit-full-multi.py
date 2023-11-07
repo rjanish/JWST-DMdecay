@@ -12,10 +12,22 @@ import scipy.optimize as opt
 import scipy.interpolate as interp
 import scipy.integrate as integ 
 
-import DMdecayJWST as assume
+import DMdecayJWST as parse
 import JWSTparsedatafiles as JWSTparse 
 import MWDMhalo as mw
 import conversions as convert 
+
+
+def parse_sub(paths, mid): 
+    """ Truncate the blue GN-z11 spectrum at the start of the red one """
+    data, targets = JWSTparse.process_target_list(paths)
+    for spec in data:
+        if (spec["lam"][0] < mid) and (spec["name"] == "GN-z11"):
+            select = (gnz11_min < spec["lam"]) & (spec["lam"] < mid)
+            spec["lam"] = spec["lam"][select]
+            spec["sky"] = spec["sky"][select]
+            spec["error"] = spec["error"][select]
+    return data, targets 
 
 
 def spline_residual(knot_values, knots, x, y, sigma_y):
@@ -56,7 +68,7 @@ def line_chisq(decay_rate, knot_values, knots, fixed,
 
 def sigma_from_fwhm(fwhm, lam0):
     sigma_inst = fwhm/(2*np.sqrt(2*np.log(2)))
-    return np.sqrt(sigma_inst**2 + (lam0*assume.sigma_v)**2)
+    return np.sqrt(sigma_inst**2 + (lam0*assume["mw_halo"]["sigma_v"])**2)
     
 def dm_line(lam, fixed, rate):
     return mw.MWDecayFlux_old(lam, fixed[0], rate, fixed[1], fixed[2])
@@ -293,7 +305,10 @@ def find_pc_limit(Ntrials, Nbins, power_threshold,
 
 if __name__ == "__main__":
 
-    data, target = assume.parse_sub(assume.gnz11_paths)
+    config_filenames = ["setup.toml", "mw_model.toml", "gnz11_only.toml"]
+    assume = parse.parse_configs(config_filenames)
+    data, target = parse_sub(assume["run_data"]["paths"],
+                             assume["run_setup"]["gnz11_min"])
     
     # raw limit params 
     setup_params = {}
@@ -308,13 +323,13 @@ if __name__ == "__main__":
     setup_params["max_clip_iters"] = 100
     setup_params["clipping_factor"] = 3
     # pc limit params 
-    pc_step_factor = 1 # subsampling factor for computing pc limit
+    pc_step_factor = 5 # subsampling factor for computing pc limit
     Ntrials = 10**2
     Nbins = 15
     power_threshold = 0.1587
     # run params
     Nthreads = 4
-    inflate = 1   # set > 1 to undersample mass range for testing
+    inflate = 100   # set > 1 to undersample mass range for testing
 
     # generate mass sampling
     l_initial = np.min([spec["lam"][0] for spec in data])
@@ -352,12 +367,13 @@ if __name__ == "__main__":
     dt_pc = time.time() - t0
     pc_limits = np.asarray(pc_output)
     print("{:0.2f} sec".format(dt_pc))
+    print(pc_limits.shape)
 
     # interpolate pc limits 
     pc_limit_func = interp.interp1d(pc_limits[:, 0], pc_limits[:, 1],
                                     bounds_error=False, 
                                     fill_value=(pc_limits[0, 1], 
-                                                pc_limits[1, 1]))
+                                                pc_limits[-1, 1]))
     full_pc_limits = pc_limit_func(test_lams)
     final_limits = np.max([limits, full_pc_limits], axis=0)
     pc_hit = np.argmax([limits, full_pc_limits], axis=0)

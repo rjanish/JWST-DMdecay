@@ -41,6 +41,11 @@ labels = {"Globular Clusters":["Stellar Evolution", 4.6e-1, 5.5e-11, "0.4"],
           "VIMOS":["VIMOS", 4.7e0, 2e-11, "0.4"],
           "CAST":["CAST", 5.5e-1, 4e-10, "0.8"]}
 
+def qcd_axion(c_agamma, m_ev):
+    return c_agamma*m_ev*(2e-10) # GeV^-1
+
+axion_models = {"KSVZ":1.92, "DFSZI":0.75, "DFSZII":1.25}
+
 if __name__ == "__main__":
     run_name = sys.argv[1]    
     conservtive_limit_path = ("{}/conservative/JWST-NIRSPEC-limits.dat"
@@ -64,6 +69,12 @@ if __name__ == "__main__":
     left_edge = 4.5e-1
     right_edge = 6e0
     fig, [ax_t, ax_g] = plt.subplots(2, 1)
+
+    m_sample = np.linspace(left_edge, right_edge, 10**4)
+    ax_g.fill_between(m_sample, 
+                      qcd_axion(axion_models["DFSZI"], m_sample),                      
+                      qcd_axion(axion_models["KSVZ"], m_sample),
+                      color='gold', alpha=0.7)
 
     for name in limit_data:
         if name == "Globular Clusters":
@@ -95,6 +106,8 @@ if __name__ == "__main__":
 
     ax_g.plot(conservative_limit[:,0], conservative_limit[:,2], 
             color="black", linewidth=2)
+
+
 
     # scale estimate 
     time = np.asarray([2, 15])*(3e7) #sec
