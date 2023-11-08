@@ -12,22 +12,9 @@ import scipy.optimize as opt
 import scipy.interpolate as interp
 import scipy.integrate as integ 
 
-import DMdecayJWST as parse
-import JWSTparsedatafiles as JWSTparse 
+import JWSTparsedatafiles as parse 
 import MWDMhalo as mw
 import conversions as convert 
-
-
-def parse_sub(paths, mid): 
-    """ Truncate the blue GN-z11 spectrum at the start of the red one """
-    data, targets = JWSTparse.process_target_list(paths)
-    for spec in data:
-        if (spec["lam"][0] < mid) and (spec["name"] == "GN-z11"):
-            select = (gnz11_min < spec["lam"]) & (spec["lam"] < mid)
-            spec["lam"] = spec["lam"][select]
-            spec["sky"] = spec["sky"][select]
-            spec["error"] = spec["error"][select]
-    return data, targets 
 
 
 def spline_residual(knot_values, knots, x, y, sigma_y):
@@ -307,8 +294,7 @@ if __name__ == "__main__":
 
     config_filenames = ["setup.toml", "mw_model.toml", "gnz11_only.toml"]
     assume = parse.parse_configs(config_filenames)
-    data, target = parse_sub(assume["run_data"]["paths"],
-                             assume["run_setup"]["gnz11_min"])
+    data, target = parse.parse_sub(assume)
     
     # raw limit params 
     setup_params = {}

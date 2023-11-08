@@ -11,15 +11,15 @@ import scipy.optimize as opt
 import astropy.io as io
 import astropy.table as table
 
-import DMdecayJWST as assume 
-import JWSTparsedatafiles as JWSTparse
+# import DMdecayJWST as parse 
+import JWSTparsedatafiles as parse
 import MWDMhalo as mw
 import conversions as convert 
 
 
-def sigma_from_fwhm(fwhm, lam0):
+def sigma_from_fwhm(fwhm, lam0, assume):
     sigma_inst = fwhm/(2*np.sqrt(2*np.log(2)))
-    return np.sqrt(sigma_inst**2 + (lam0*assume.sigma_v)**2)
+    return np.sqrt(sigma_inst**2 + (lam0*assume["mw_halo"]["sigma_v"])**2)
 
 def chisq_dm_totalflux(rate, lam0, fixed_list, x_list, 
              y_list, sigma_y_list, shift=0):
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         # run_log.write("{} {} {}\n".format(*sys.argv[1:4]))
         run_log.write("{}\n".format(sys.argv[1]))
 
-    # data, targets = JWSTparse.process_target_list(assume.data_dir)
+    # data, target = JWSTparse.process_target_list(assume.data_dir)
     # Nrows_full = len(data)
     # if targeting_path != "all":
     #     with open(targeting_path) as targeting_file:
@@ -63,16 +63,19 @@ if __name__ == "__main__":
     #         data = [row for row in data if row["name"] in targeting]
     #         select = np.zeros(Nrows_full, dtype=bool)
     #         for target in targeting:
-    #             matches = (targets["name"] == target)
-    #             select = select | (targets["name"] == target)
-    #         targets = targets[select]
+    #             matches = (target["name"] == target)
+    #             select = select | (target["name"] == target)
+    #         target = target[select]
 
-    # data, targets = assume.parse_gnz11()
-    data, targets = assume.parse_sub(assume.gnz11_paths )
+    # data, target = assume.parse_gnz11()
+    # data, target = assume.parse_sub(assume.gnz11_paths )
+    config_filenames = ["setup.toml", "mw_model.toml", "gnz11_only.toml"]
+    assume = parse.parse_configs(config_filenames)
+    data, target = parse.parse_sub(assume)
 
-    targets.write("{}/targets.html".format(run_name), 
+    target.write("{}/targets.html".format(run_name), 
                   format="ascii.html", overwrite=True)
-    targets.write("{}/targets.dat".format(run_name), 
+    target.write("{}/targets.dat".format(run_name), 
                   format="ascii.csv", overwrite=True)
     Nrows = len(data)
     print("analyzing {} spectra".format(Nrows))
@@ -98,7 +101,7 @@ if __name__ == "__main__":
     l_final = np.max(lend)
     lam_test = [l_initial]
     while lam_test[-1] < l_final:
-        dlam_i = 2*np.min([sigma_from_fwhm(spec["max_res"], lam_test[-1]) 
+        dlam_i = 2*np.min([sigma_from_fwhm(spec["max_res"], lam_test[-1], assume) 
                            for spec in data]) #rescale for testing
         lam_test.append(lam_test[-1] + dlam_i)
     lam_test = np.asarray(lam_test[1:-1]) # the last one is always outside the range
@@ -120,7 +123,7 @@ if __name__ == "__main__":
     t00 = t0
     uppers = [1e-8, 1e-6, 1e-4, 1e-2, 1, 100]
     for index, lam0 in enumerate(lam_test):
-        fixed_list = [[lam0, spec["D"], sigma_from_fwhm(spec["max_res"], lam0)]
+        fixed_list = [[lam0, spec["D"], sigma_from_fwhm(spec["max_res"], lam0, assume)]
                       for spec in data]
         lower = 0.0
         for upper in uppers:
