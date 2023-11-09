@@ -126,7 +126,7 @@ def parse_configs(config_filenames):
         with open(filename, "rb") as f: 
             print(F"parsing {filename}")
             assume.update(tomli.load(f))
-    # compute DM halo data
+    # DM halo setupa
     assume["mw_halo"]["v_sun"] = np.asarray(assume["mw_halo"]["v_sun"])
     assume["mw_halo"]["sigma_v"] = (
         assume["mw_halo"]["sigma_v_kms"]/assume["mw_halo"]["c_kms"])
@@ -141,10 +141,11 @@ def parse_configs(config_filenames):
          0.0,
          assume["mw_halo"]["z_sun"]]) 
          # kpc, cartesain position of sun in galcen fame 
-    # construct run paths 
+    # run setup 
     assume["run_data"]["paths"] = [
         "{}/{}".format(assume["paths"]["data_dir"], f) 
         for f in assume["run_data"]["filenames"]]
+    assume["analysis"]["window"] = assume["analysis"]["width_factor"]*assume["mw_halo"]["sigma_v"]
     return assume
 
 

@@ -175,8 +175,8 @@ def find_raw_limit(setup_params, data, lam0):
                   in zip(error_scale_factors, raw_error_list)]
 
     # apply masks
-    ldm_left = lam0*(1 - v_dm)
-    ldm_right = lam0*(1 + v_dm)
+    ldm_left = lam0*(1 - assume["mw_halo"]["sigma_v"])
+    ldm_right = lam0*(1 + assume["mw_halo"]["sigma_v"])
     sky_list_msk = []  # erasing these, replace with masked data
     lam_list_msk = []
     error_list_msk = []
@@ -295,27 +295,6 @@ if __name__ == "__main__":
     config_filenames = ["setup.toml", "mw_model.toml", "gnz11_only.toml"]
     assume = parse.parse_configs(config_filenames)
     data, target = parse.parse_sub(assume)
-    
-    # raw limit params 
-    setup_params = {}
-    width_factor = 150
-    v_dm = 7e-4
-    setup_params["window"] = width_factor*v_dm
-    setup_params["padding"] = 1e-8
-    setup_params["num_knots"] = 5
-    # setup_params["chisq_step"] = 2.71 
-    setup_params["chisq_step"] = 4 
-    setup_params["limit_guess"] = [1e-5, 1e-3]
-    setup_params["max_clip_iters"] = 100
-    setup_params["clipping_factor"] = 3
-    # pc limit params 
-    pc_step_factor = 5 # subsampling factor for computing pc limit
-    Ntrials = 10**2
-    Nbins = 15
-    power_threshold = 0.1587
-    # run params
-    Nthreads = 4
-    inflate = 100   # set > 1 to undersample mass range for testing
 
     # generate mass sampling
     l_initial = np.min([spec["lam"][0] for spec in data])
@@ -323,16 +302,16 @@ if __name__ == "__main__":
     test_lams = [l_initial]
     while test_lams[-1] < l_final:
         dlam_i = 2*np.min([sigma_from_fwhm(spec["max_res"], test_lams[-1]) 
-                           for spec in data])*inflate 
+                           for spec in data])*assume["analysis"]["inflate"] 
         test_lams.append(test_lams[-1] + dlam_i)
     test_lams = np.asarray(test_lams[1:-1]) # strip to stay inside data bounds
     # test_lams = [1.1401]
 
     # get raw, non-pc limited bounds
-    raw_limits_func = functools.partial(find_raw_limit, setup_params, data)
+    raw_limits_func = functools.partial(find_raw_limit, assume["analysis"], data)
     print("scanning {} mass trials for raw limits...".format(len(test_lams)))
     t0 = time.time()
-    with mltproc.Pool(Nthreads) as pool:
+    with mltproc.Pool(assume["analysis"]["Nthreads"]) as pool:
         raw_output = pool.map(raw_limits_func, test_lams)    
     limits = np.asarray([out[4][0] for out in raw_output])
     bestfit = np.asarray([out[5][0] for out in raw_output])
@@ -343,12 +322,15 @@ if __name__ == "__main__":
 
     # compute pc limits 
     pc_inputs = [[out[9], out[7], out[8], out[2], out[5][1], out[1]] 
-                 for out in raw_output[::pc_step_factor]]
-    pc_limits_func = functools.partial(find_pc_limit, Ntrials, Nbins, 
-                                       power_threshold, setup_params, data)
+                 for out in raw_output[::assume["analysis"]["pc_step_factor"]]]
+    pc_limits_func = functools.partial(find_pc_limit, 
+                                       assume["analysis"]["Ntrials"], 
+                                       assume["analysis"]["Nbins"], 
+                                       assume["analysis"]["power_threshold"], 
+                                       assume["analysis"], data)
     print("scanning {} mass trials for pc bounds...".format(len(pc_inputs)))
     t0 = time.time()
-    with mltproc.Pool(Nthreads) as pool:
+    with mltproc.Pool(assume["analysis"]["Nthreads"]) as pool:
         pc_output = pool.map(pc_limits_func, pc_inputs)    
     dt_pc = time.time() - t0
     pc_limits = np.asarray(pc_output)
@@ -374,8 +356,7 @@ if __name__ == "__main__":
     bestfit_g = convert.decayrate_to_axion_g(bestfit_decayrate, m) 
 
     # write output 
-    run_name = "gnz11_final"
-    line_results_dir = "{}/continuum".format(run_name)
+    line_results_dir = "{}/continuum".format(assume["run_data"]["name"])
 
     limits_path = ("{}/JWST-NIRSPEC-limits.dat"
                    "".format(line_results_dir))
@@ -383,7 +364,7 @@ if __name__ == "__main__":
               "JWST NIRSPEC run {}\n"
               "mass [ev]    lifetime [sec]    "
               "g_a\\gamma\\gamma [GeV^-1] (for vanilla axion)"
-              "".format(run_name))
+              "".format(assume["run_data"]["name"]))
     np.savetxt(limits_path, 
                np.column_stack((m, limit_decayrate, limit_g)),
                header=limits_header)
@@ -395,7 +376,7 @@ if __name__ == "__main__":
                        "lambda0 [micron]    mass [ev]    lifetime [sec]    "
                        "g_a\\gamma\\gamma [GeV^-1] (for vanilla axion)    "
                        "d(chisq)"
-                       "".format(run_name))
+                       "".format(assume["run_data"]["name"]))
     np.savetxt(bestfits_path, 
                np.column_stack((test_lams, m, 
                                 bestfit_decayrate, bestfit_g,
@@ -410,7 +391,7 @@ if __name__ == "__main__":
                        "raw limit [comp units]    "
                        "pc limit [comp units]    "
                        "pc used"
-                       "".format(run_name))
+                       "".format(assume["run_data"]["name"]))
     np.savetxt(pc_path, 
                np.column_stack((test_lams, m, limits, 
                                 full_pc_limits, pc_hit)),
