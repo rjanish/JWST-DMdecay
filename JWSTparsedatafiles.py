@@ -12,7 +12,6 @@ import astropy.table as table
 import astropy.coordinates as coord
 import astropy.units as u
 
-import DMdecayJWST as parse 
 import MWDMhalo as mw
 
 
