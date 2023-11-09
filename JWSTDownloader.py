@@ -8,7 +8,7 @@ import time
 from astroquery.mast import Observations as obv 
 import astropy.table as table
 
-import DMdecayJWST as assume
+import JWSTparsedatafiles as parse
 
 
 if __name__ == "__main__":
@@ -48,11 +48,11 @@ if __name__ == "__main__":
     print("total: {:0.2f} min".format(dt_total/60.0))
     print("found {} calibrated 1D spectra\n"
           "downloading spectra... ".format(len(target_products)))
-    obv.download_products(target_products, download_dir=assume.download_dir)
+    obv.download_products(target_products, download_dir=assume["paths"]["download_dir"])
     for name, table_to_save in zip(
         ["selected_observations", "selected_data_products"],
         [target_obvs, target_products]):
-        table_to_save.write("{}/{}.csv".format(assume.data_dir, name),
+        table_to_save.write("{}/{}.csv".format(assume["paths"]["data_dir"], name),
                           format='ascii.csv', overwrite=True)
-        table_to_save.write("{}/{}.html".format(assume.data_dir, name),
+        table_to_save.write("{}/{}.html".format(assume["paths"]["data_dir"], name),
                           format='ascii.html', overwrite=True)
