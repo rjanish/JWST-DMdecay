@@ -1,2 +1,2 @@
-# JWST-DMdecay
-Search for DM decay with JWST
+# IR-Optical-DMdecay
+Search for DM decay with infrared and optical astronomy.

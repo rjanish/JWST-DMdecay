@@ -120,7 +120,6 @@ def find_raw_limit(setup_params, data, lam0):
     if num_specs == 0:
         return [[lmin, lmax], spec_list, [None], [None], 
                 [np.nan, None], [np.nan, None], np.nan]
-                ## why is this executing ???
 
     # fit continuum
     knots = np.zeros(num_specs*num_knots)
@@ -218,7 +217,7 @@ def find_raw_limit(setup_params, data, lam0):
                               sky_list_msk, error_list_msk)
     delta_chisq = no_fit_chisq - best_fit_chisq
 
-    # marganilize over continuum params 
+    # marginalize over continuum params 
     threshold = chisq_step + best_fit_chisq
     knot_bounds = np.zeros((knots.size, 2))
     for i in range(num_specs):

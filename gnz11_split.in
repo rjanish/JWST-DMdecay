@@ -1,0 +1,49 @@
+# All setup parameters and metadata for a DM analysis 
+
+
+[run]
+name = "gnz11_split"
+filenames = [
+    "jw04426-o001_t001_nirspec_g235m-f170lp/jw04426-o001_t001_nirspec_g235m-f170lp_x1d.fits",
+    "jw04426-o001_t001_nirspec_g140m-f100lp/jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits"]
+lambda_split = 1.65978  # lambda at which to truncate the blue spectrum in favor of the red
+lambda_min = 0.99       # min lambda of bluest spectrum
+
+
+[analysis]
+width_factor = 150.0
+padding = 1e-8
+num_knots = 5
+chisq_step = 4.0 
+limit_guess = [1e-5, 1e-3]
+max_clip_iters = 100
+clipping_factor = 3.0
+pc_step_factor = 5 
+Ntrials = 100
+Nbins = 15
+power_threshold = 0.1587
+Nthreads = 4
+inflate = 100  
+
+
+[halo]
+# parameters to normalize D factor and galactic DM distrbution
+# any density distribution is given as rho(r) = rho_s f(r/r_s)
+# for a purely dimensionless distribution f(x)
+  rho_s = 0.18                # GeV/cm^3
+  r_s = 24.0                  # kpc
+# velocity distribution 
+  sigma_v_kms = 160.0         # km/s, the asympotitc circular velocity 
+                              #       is v0 = sqrt(2) sigma = 220 km/s
+# define galactocentric corrdinate frame 
+  r_sun = 8.1                 # kpc, distance from the sun to the galactic center
+  z_sun = 0.021               # kpc, distance of sun above galactic plane
+  v_sun = [2.9, 245.6, 7.78]  # km/s, velocity of sun wrt galactic center
+  ra_gc = 266.4051            # deg, icrs coords of galactic center
+  dec_gc = -28.936175         # deg, icrs coords of galactic center
+
+
+[system]
+data_dir = "data/mastDownload/JWST"
+res_path = "data/resolution/JWST-NIRSPEC-max-resolution.dat"
+AxionLimits_dir = "../AxionLimits/limit_data/AxionPhoton"
