@@ -8,9 +8,7 @@ import numpy as np
 import scipy as sp 
 import matplotlib.pyplot as plt
 
-import DMdecayJWST as assume  
-import conversions as convert
-
+import DMdecay as dmd
 
 decay_only = {#"HST COB", 
           "MUSE":["MUSE", 3e0, 7e24, "0.8"],
@@ -35,7 +33,7 @@ colors = {"Globular Clusters":"0.4",
           "CAST3":"0.5"}
 
 # name, x, y, color
-labels = {"Globular Clusters":["Stellar Evolution", 4.6e-1, 5.5e-11, "0.4"],
+labels = {"Globular Clusters":["Stellar Evolution", 4.6e-1, 2.5e-11, "0.4"],
           # "HST COB":["HST", 8e0, 3e-11, "0.5"],
           "MUSE":["MUSE", 3.1e0, 2e-11, "0.8"],
           "VIMOS":["VIMOS", 4.7e0, 2e-11, "0.4"],
@@ -44,21 +42,22 @@ labels = {"Globular Clusters":["Stellar Evolution", 4.6e-1, 5.5e-11, "0.4"],
 def qcd_axion(c_agamma, m_ev):
     return c_agamma*m_ev*(2e-10) # GeV^-1
 
-axion_models = {"KSVZ":1.92, "DFSZI":0.75, "DFSZII":1.25}
+axion_models = {"KSVZ":1.92, "DFSZI":0.75}
 
 if __name__ == "__main__":
-    run_name = sys.argv[1]    
-    conservtive_limit_path = ("{}/conservative/JWST-NIRSPEC-limits.dat"
-                              "".format(run_name))
-    conservative_limit = np.loadtxt(conservtive_limit_path)
-    line_limit_path = ("{}/continuum/JWST-NIRSPEC-limits.dat"
-                              "".format(run_name))
+    config_filename = sys.argv[1]    
+    configs = dmd.prep.parse_configs(config_filename)
+
+    flux_limit_path = "{}/flux-limits.dat".format(configs["run"]["name"])
+    flux_limit = np.loadtxt(flux_limit_path)
+    line_limit_path = "{}/line-limits.dat".format(configs["run"]["name"])
     line_limit = np.loadtxt(line_limit_path)
     plt.rcParams['text.usetex'] = True
 
     limit_data = {}
     for name in filenames:
-        path = os.path.join(assume.AxionLimits_dir, filenames[name])
+        path = os.path.join(configs["system"]["AxionLimits_dir"], 
+                            filenames[name])
         try:
             limit_data[name] = np.loadtxt(path)
         except:
@@ -70,11 +69,17 @@ if __name__ == "__main__":
     right_edge = 6e0
     fig, [ax_t, ax_g] = plt.subplots(2, 1)
 
+
     m_sample = np.linspace(left_edge, right_edge, 10**4)
     ax_g.fill_between(m_sample, 
-                      qcd_axion(axion_models["DFSZI"], m_sample),                      
-                      qcd_axion(axion_models["KSVZ"], m_sample),
-                      color='gold', alpha=0.7)
+                      qcd_axion(axion_models["DFSZI"]*3.0, m_sample),                      
+                      qcd_axion(axion_models["KSVZ"]/3.0, m_sample),
+                      color='goldenrod', alpha=0.7, linewidth=0)
+    ax_g.text(0.5, 8e-11, 
+            "QCD Axion", 
+            color="darkgoldenrod",
+            fontsize=14, rotation=5)
+
 
     for name in limit_data:
         if name == "Globular Clusters":
@@ -99,12 +104,12 @@ if __name__ == "__main__":
                     upper_edge, facecolor="firebrick", 
                     linewidth=1, alpha=0.9, edgecolor=None)
 
-    ax_g.vlines(conservative_limit[[0, -1], 0],
-              conservative_limit[[0, -1], 2],
-              [upper_edge, upper_edge],
-              color="darkred", linewidth=0.75)
+    # ax_g.vlines(flux_limit[[0, -1], 0],
+    #           flux_limit[[0, -1], 2],
+    #           [upper_edge, upper_edge],
+    #           color="darkred", linewidth=0.75)
 
-    ax_g.plot(conservative_limit[:,0], conservative_limit[:,2], 
+    ax_g.plot(flux_limit[:,0], flux_limit[:,2], 
             color="black", linewidth=2)
 
 
@@ -162,16 +167,18 @@ if __name__ == "__main__":
 
     ax_g.set_xlabel(r"$\displaystyle m_a\; [{\rm \tiny eV }]$", 
                   fontsize=16)
-    ax_g.set_ylabel(r"$\displaystyle g_{a\gamma\gamma}\; [{\rm \tiny GeV }^{-1}]$", 
-                  fontsize=16)
+    ax_g.set_ylabel(
+        r"$\displaystyle g_{a\gamma\gamma}\; [{\rm \tiny GeV }^{-1}]$", 
+        fontsize=16)
 
 
     lifetime_upper_edge = 4e29
     lifetime_lower_edge = 1e24
 
     for name in decay_only:
-        rate_limit = convert.axion_g_to_decayrate(limit_data[name][:,1], 
-                                                  limit_data[name][:,0])
+        rate_limit = dmd.conversions.axion_g_to_decayrate(
+            limit_data[name][:,1], 
+            limit_data[name][:,0])
         ax_t.fill_between(limit_data[name][:,0], lifetime_lower_edge,
                         rate_limit**-1, color=colors[name], 
                         linewidth=0, alpha=1)
@@ -181,12 +188,12 @@ if __name__ == "__main__":
                     upper_edge, facecolor="firebrick", 
                     linewidth=1, alpha=0.85, edgecolor=None)
 
-    ax_t.vlines(conservative_limit[[0, -1], 0],
-              conservative_limit[[0, -1], 1]**-1,
+    ax_t.vlines(flux_limit[[0, -1], 0],
+              flux_limit[[0, -1], 1]**-1,
               [upper_edge, upper_edge],
               color="firebrick", linewidth=0.75)
 
-    ax_t.plot(conservative_limit[:,0], conservative_limit[:,1]**-1, 
+    ax_t.plot(flux_limit[:,0], flux_limit[:,1]**-1, 
             color="Black", linewidth=2)
 
     # scale estimate 
@@ -232,11 +239,6 @@ if __name__ == "__main__":
     ax_t.set_xlim([left_edge, right_edge])
     ax_t.set_yscale('log')
     ax_t.set_xscale('log')
-    # lifetime_constraint_path = "{}/lifetime_constraints.pdf".format(run_name)
-    # fig.savefig(lifetime_constraint_path, dpi=300, bbox_inches="tight")
-
-    # ax_t.set_xlabel(r"$\displaystyle m_{\rm DM}\; [{\rm \tiny eV }]$", 
-    #               fontsize=16)
     ax_t.set_ylabel(r"$\displaystyle \tau \; [{\rm \tiny sec }]$", 
                   fontsize=16)
 
@@ -247,7 +249,7 @@ if __name__ == "__main__":
     ax_t.set_xticklabels(ticks)
     ax_g.set_xticks(ticks)
     ax_g.set_xticklabels(ticks)
-    constraint_path = "{}/constraints.pdf".format(run_name)
+    constraint_path = "{}/constraints.pdf".format(configs["run"]["name"])
     fig.set_size_inches(8, 6)
     fig.tight_layout(pad=1)
     fig.savefig(constraint_path, dpi=300, bbox_inches="tight")

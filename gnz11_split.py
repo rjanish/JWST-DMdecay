@@ -7,6 +7,7 @@ redder spectrum only in the region of overlap (as in v1 2310.15395).
 
 import sys
 import os 
+import time
 
 import pandas as pd 
 
@@ -28,6 +29,7 @@ def partition_gnz11(data, lam_min, lam_split):
 
 
 if __name__ == "__main__":
+    t0 = time.time()
     config_filename = sys.argv[1]
     configs = dmd.prep.parse_configs(config_filename)
     try:
@@ -40,7 +42,7 @@ if __name__ == "__main__":
                                   configs["system"]["res_path"])
     data = partition_gnz11(data, configs["run"]["lambda_min"],
                            configs["run"]["lambda_split"])
-
+    print()
     for spec in data:
         dmd.prep.doppler_correction(spec, configs["halo"])
         dmd.prep.add_Dfactor(spec, configs["halo"])
@@ -53,5 +55,7 @@ if __name__ == "__main__":
 
     test_lams = dmd.prep.get_mass_samples(data, configs)
     dmd.linesearch.run(data, configs, test_lams)
+    print()
     dmd.fluxlimit.run(data, configs, test_lams)
-
+    print()
+    print(F"total: {(time.time() - t0)/60.0:0.2f} mins")
