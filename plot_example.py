@@ -138,6 +138,6 @@ if __name__ == "__main__":
     ax2.tick_params(axis='both', which='major', labelsize=16)
     fig.tight_layout(pad=2)
     fig.set_size_inches(12, 8)
-    output_path = "{}/combined.pdf".format(configs["run"]["name"])
+    output_path = "{}/combined-lam{}.pdf".format(configs["run"]["name"], lam0)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
 
