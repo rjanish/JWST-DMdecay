@@ -100,7 +100,7 @@ def NFWprofile(x):
 	"""
 	NFW profile normalized to rho_s = 1 and r_s = 1
 	"""
-	# return 1.0/(x*(1.0 + x)**2)
+	return 1.0/(x*(1.0 + x)**2)
 
 # test test test 
 
