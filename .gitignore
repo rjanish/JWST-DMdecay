@@ -1,8 +1,8 @@
 # ignore everything without extension (including directories):
   # Ignore all
   # Unignore all with extensions
-*
-!*.*
+# *
+# !*.*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
@@ -323,4 +323,5 @@ TSWLatexianTemp*
 data/*
 __pycache__/*
 old/*
-
+AxionLimits
+*__pycache__
