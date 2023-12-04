@@ -313,6 +313,7 @@ TSWLatexianTemp*
 # data 
 *.fits
 *.dat
+*.json
 
 # figures 
 *.png 
