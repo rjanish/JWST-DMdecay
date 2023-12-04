@@ -22,8 +22,8 @@ Ntrials = 100
 Nbins = 15
 power_threshold = 0.1587
 Nthreads = 4
-inflate = 50  
-pc_step_factor = 5 
+inflate = 200  
+# pc_step_factor = 5 
 
 
 [halo]

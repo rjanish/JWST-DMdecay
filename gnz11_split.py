@@ -59,26 +59,11 @@ if __name__ == "__main__":
     
     rawlimits_path = F"{run_name}/line-rawlimits.dat"
     bestfits_path  = F"{run_name}/line-bestfits.dat"
-    rawoutput_path  = F"{run_name}/line-rawoutput.json"
-    try:
-        with open(rawoutput_path, "r") as rf:
-            previous = json.load(rf)
-    except FileNotFoundError:
-        previous = []
-    raw_finished = (os.path.isfile(rawlimits_path) and 
-                    os.path.isfile(bestfits_path))
-    if raw_finished:
-        print("found finished raw line limits")
-        raw_output = previous    
-    else:
-        raw_output = dmd.linesearch.run_rawlimits(data, configs, test_lams,
-                                                  rawoutput_path, previous)
-        dmd.linesearch.parse_and_save_rawlimits(test_lams, raw_output, 
-                                                run_name, rawlimits_path, 
-                                                bestfits_path)
-
-
-    pc_output = dmd.linesearch.run_pclimits(data, configs, test_lams, raw_output)
-    dmd.linesearch.parse_and_save_pclimits(configs, test_lams, raw_output, pc_output)
+    pc_path  = F"{run_name}/line-pc.dat"
+    lineoutput_path  = F"{run_name}/line-output.json"
+    line_output = dmd.linesearch.run(data, configs, test_lams, lineoutput_path)
+    print(F"line output: {len(line_output)}")
+    dmd.linesearch.parse_and_save(test_lams, line_output, run_name, 
+                                  rawlimits_path, bestfits_path, pc_path)
     
     print(F"total: {(time.time() - t0)/60.0:0.2f} mins")

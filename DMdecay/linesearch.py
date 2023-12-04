@@ -250,7 +250,6 @@ def find_pc_limit(configs, data, fit_region):
     [lam0, lam_list_msk, error_list_msk, 
      knots, best_knots, spec_list] = fit_region
     num_knots = configs["analysis"]["num_knots"]
-    guess = np.concatenate((best_knots, [0.0])) # fit starting
     # generate mock data    
     upper_limits = np.nan*np.ones(Ntrials)
     for trial in range(Ntrials):
@@ -287,41 +286,50 @@ def find_pc_limit(configs, data, fit_region):
                           bracket=[0, rate_max])
     return [lam0, sol.root]
 
+def find_full_limit(configs, data, lam0):
+    raw_results = find_raw_limit(configs, data, lam0)
+    fit_region = [raw_results[9], raw_results[7], raw_results[8], 
+                  raw_results[2], raw_results[5][1], raw_results[1]]
+    pc_results = find_pc_limit(configs, data, fit_region)
+    return raw_results + pc_results[1]
 
-def run_rawlimits(data, configs, test_lams, rawoutput_path, previous):
+def run(data, configs, test_lams, line_output_path):
     """
     Find bestfit line and chi-sq limit on line strength
     """
-    raw_limits_func = functools.partial(find_raw_limit, configs, data)
-    remaining_lams = test_lams[len(previous):]
-    print(F"scanning {len(remaining_lams)} mass trials for raw line limits...")
+    raw_limits_func = functools.partial(find_full_limit, configs, data)
+    print(F"scanning {len(test_lams)} mass trials for line limits...")
     t0 = time.time()
     with mltproc.Pool(configs["analysis"]["Nthreads"]) as pool:
         raw_output = [] 
         try:
-            for result in pool.imap(raw_limits_func, remaining_lams):
+            for result in pool.imap(raw_limits_func, test_lams):
                 raw_output.append(result)
         except:
-            print("terminating raw limits run")    
+            print("terminating line limits run")    
     dt_raw = time.time() - t0
-    print("elapsed: {:0.2f} sec".format(dt_raw))
-    with open(rawoutput_path, "w") as wf:
+    with open(line_output_path, "w") as wf:
         json.dump(nestedtolist(copy.deepcopy(raw_output)), wf, indent=4)
     return raw_output
  
-def parse_and_save_rawlimits(test_lams, raw_output, run_name, 
-                             limits_path, bestfits_path):
+def parse_and_save(test_lams, line_output, run_name, 
+                   limits_path, bestfits_path, pc_path):
     """
     Convert output to physical quantities and write to disk  
     """
     print("writing raw results...")
-    limits = np.asarray([out[4][0] for out in raw_output])
-    bestfit = np.asarray([out[5][0] for out in raw_output])
-    delta_chisqs = np.asarray([out[6] for out in raw_output])
-    error_scale_factors = np.asarray([out[3] for out in raw_output])
+    limits = np.asarray([out[4][0] for out in line_output])
+    bestfit = np.asarray([out[5][0] for out in line_output])
+    delta_chisqs = np.asarray([out[6] for out in line_output])
+    error_scale_factors = np.asarray([out[3] for out in line_output])
+    pc_limit = np.asarray([out[16] for out in line_output])
     # physical conversion 
+    print(test_lams)
     m = convert.wavelength_to_mass(test_lams)
-    limit_decayrate = convert.fluxscale_to_invsec(limits)    
+    print(m)
+    print(limits)
+    limit_decayrate = convert.fluxscale_to_invsec(limits)
+    print(limit_decayrate)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m) 
     bestfit_decayrate = convert.fluxscale_to_invsec(bestfit)    
     bestfit_g = convert.decayrate_to_axion_g(bestfit_decayrate, m) 
@@ -344,67 +352,86 @@ def parse_and_save_rawlimits(test_lams, raw_output, run_name,
                                 bestfit_decayrate, bestfit_g,
                                 delta_chisqs)),
                header=bestfits_header)
-    return raw_output
 
-
-def run_pclimits(data, configs, test_lams, raw_output):
-    """ 
-    apply power constraints to limits 
-    """
-    limits = np.asarray([out[4][0] for out in raw_output])
-    pc_inputs = [[out[9], out[7], out[8], out[2], out[5][1], out[1]] 
-                 for out in raw_output[::configs["analysis"]["pc_step_factor"]]]
-    pc_limits_func = functools.partial(find_pc_limit, configs, data)
-    print("scanning {} mass trials for pc line bounds...".format(len(pc_inputs)))
-    t0 = time.time()
-    with mltproc.Pool(configs["analysis"]["Nthreads"]) as pool:
-        pc_output = []
-        try:
-            for result in pool.imap(pc_limits_func, pc_inputs):
-                pc_output.append(result)
-        except KeyboardInterrupt:
-            print("terminating pc run")    
-    dt_pc = time.time() - t0
-    print("elapsed: {:0.2f} sec".format(dt_pc))
-    # save base output
-    pc_output_path = ("{}/line-pcoutput.json"
-                       "".format(configs["run"]["name"]))
-    with open(pc_output_path, "w") as wf:
-        json.dump(nestedtolist(copy.deepcopy(pc_output)), wf, indent=4)
-    return pc_output
-    
-def parse_and_save_pclimits(configs, test_lams, raw_output, pc_output):
-    """
-    Convert output to physical quantities and write to disk  
-    """
-    print("writing pc results...")
-    limits = np.asarray([out[4][0] for out in raw_output])
-    pc_limits = np.asarray(pc_output)
-    # interpolate pc limits 
-    pc_limit_func = interp.interp1d(pc_limits[:, 0], pc_limits[:, 1],
-                                    bounds_error=False, 
-                                    fill_value=(pc_limits[0, 1], 
-                                                pc_limits[-1, 1]))
-    full_pc_limits = pc_limit_func(test_lams)
-    final_limits = np.max([limits, full_pc_limits], axis=0)
-    pc_hit = np.argmax([limits, full_pc_limits], axis=0)
+    final_limits = np.max([limits, pc_limit], axis=0)
+    pc_hit = np.argmax([limits, pc_limit], axis=0)
     print("power constrained fraction: {:0.2f}".format(np.sum(pc_hit)/pc_hit.size))
     # physical conversion 
     m = convert.wavelength_to_mass(test_lams)
     limit_decayrate = convert.fluxscale_to_invsec(final_limits)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m) 
     # write output 
-    pc_path = ("{}/line-pc.dat"
-                     "".format(configs["run"]["name"]))
-    pc_header = ("DM decay power constraint results vs mass \n"
-                       "JWST NIRSPEC run {}\n"
-                       "lambda0 [micron]    mass [ev]    "    
-                       "raw limit [comp units]    "
-                       "pc limit [comp units]    "
-                       "pc used"
-                       "".format(configs["run"]["name"]))
+    pc_header = (F"DM decay power constraint results vs mass \n"
+                  "JWST NIRSPEC run {run_name}\n"
+                  "lambda0 [micron]    mass [ev]    "    
+                  "raw limit [comp units]    "
+                  "pc limit [comp units]    "
+                  "pc used")
     np.savetxt(pc_path, 
                np.column_stack((test_lams, m, limits, 
                                 full_pc_limits, pc_hit)),
                header=pc_header)
-    return pc_output
+    return
+
+# def run_pclimits(data, configs, test_lams, raw_output):
+#     """ 
+#     apply power constraints to limits 
+#     """
+#     limits = np.asarray([out[4][0] for out in raw_output])
+#     pc_inputs = [[out[9], out[7], out[8], out[2], out[5][1], out[1]] 
+#                  for out in raw_output[::configs["analysis"]["pc_step_factor"]]]
+#     pc_limits_func = functools.partial(find_pc_limit, configs, data)
+#     print("scanning {} mass trials for pc line bounds...".format(len(pc_inputs)))
+#     t0 = time.time()
+#     with mltproc.Pool(configs["analysis"]["Nthreads"]) as pool:
+#         pc_output = []
+#         try:
+#             for result in pool.imap(pc_limits_func, pc_inputs):
+#                 pc_output.append(result)
+#         except KeyboardInterrupt:
+#             print("terminating pc run")    
+#     dt_pc = time.time() - t0
+#     print("elapsed: {:0.2f} sec".format(dt_pc))
+#     # save base output
+#     pc_output_path = ("{}/line-pcoutput.json"
+#                        "".format(configs["run"]["name"]))
+#     with open(pc_output_path, "w") as wf:
+#         json.dump(nestedtolist(copy.deepcopy(pc_output)), wf, indent=4)
+#     return pc_output
+    
+# def parse_and_save_pclimits(configs, test_lams, raw_output, pc_output):
+#     """
+#     Convert output to physical quantities and write to disk  
+#     """
+#     print("writing pc results...")
+#     limits = np.asarray([out[4][0] for out in raw_output])
+#     pc_limits = np.asarray(pc_output)
+#     # interpolate pc limits 
+#     pc_limit_func = interp.interp1d(pc_limits[:, 0], pc_limits[:, 1],
+#                                     bounds_error=False, 
+#                                     fill_value=(pc_limits[0, 1], 
+#                                                 pc_limits[-1, 1]))
+#     full_pc_limits = pc_limit_func(test_lams)
+    
+#     final_limits = np.max([limits, full_pc_limits], axis=0)
+#     pc_hit = np.argmax([limits, full_pc_limits], axis=0)
+#     print("power constrained fraction: {:0.2f}".format(np.sum(pc_hit)/pc_hit.size))
+#     # physical conversion 
+#     m = convert.wavelength_to_mass(test_lams)
+#     limit_decayrate = convert.fluxscale_to_invsec(final_limits)    
+#     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m) 
+#     # write output 
+#     pc_path = ("{}/line-pc.dat"
+#                      "".format(configs["run"]["name"]))
+#     pc_header = ("DM decay power constraint results vs mass \n"
+#                        "JWST NIRSPEC run {}\n"
+#                        "lambda0 [micron]    mass [ev]    "    
+#                        "raw limit [comp units]    "
+#                        "pc limit [comp units]    "
+#                        "pc used"
+#                        "".format(configs["run"]["name"]))
+#     np.savetxt(pc_path, 
+#                np.column_stack((test_lams, m, limits, 
+#                                 full_pc_limits, pc_hit)),
+#                header=pc_header)
+#     return pc_output
