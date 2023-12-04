@@ -42,7 +42,6 @@ if __name__ == "__main__":
                                   configs["system"]["res_path"])
     data = partition_gnz11(data, configs["run"]["lambda_min"],
                            configs["run"]["lambda_split"])
-    print()
     for spec in data:
         dmd.prep.doppler_correction(spec, configs["halo"])
         dmd.prep.add_Dfactor(spec, configs["halo"])
@@ -54,8 +53,8 @@ if __name__ == "__main__":
     table.to_html(table_filename + ".html")
 
     test_lams = dmd.prep.get_mass_samples(data, configs)
-    dmd.linesearch.run(data, configs, test_lams)
-    print()
     dmd.fluxlimit.run(data, configs, test_lams)
-    print()
+    raw_output = dmd.linesearch.run_rawlimits(data, configs, test_lams)
+    raw_output = dmd.linesearch.run_pclimits(data, configs, test_lams,
+                                             raw_output)
     print(F"total: {(time.time() - t0)/60.0:0.2f} mins")
