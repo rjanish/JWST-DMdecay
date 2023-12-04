@@ -30,8 +30,8 @@ def partition_gnz11(data, lam_min, lam_split):
 
 if __name__ == "__main__":
     t0 = time.time()
-    config_filename = sys.argv[1]
-    configs = dmd.prep.parse_configs(config_filename)
+    config_path = sys.argv[1]
+    configs = dmd.prep.parse_configs(config_path)
     try:
         os.mkdir(configs["run"]["name"])
     except FileExistsError:
