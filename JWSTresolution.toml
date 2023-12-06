@@ -1,0 +1,6 @@
+# JWST resolution script config
+
+[paths]
+resolution_dir = 'data/resolution'
+resolvedres_base = 'JWST-NIRSPEC-resolved-resolution'
+maxres_path = 'JWST-NIRSPEC-max-resolution.dat'

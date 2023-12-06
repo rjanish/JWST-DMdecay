@@ -1,4 +1,4 @@
-# download config script 
+# MAST download script config
 
 [paths]
 download_root = "data"

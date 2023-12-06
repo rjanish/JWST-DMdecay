@@ -2,22 +2,23 @@
 
 
 import os 
+import sys 
 
 import numpy as np
 import astropy.io.fits as fits 
 import astropy.table as table
 
-import JWSTparsedatafiles as parse
-
 
 if __name__ == "__main__":
-
-    config_filenames = ["setup.toml", "mw_model.toml", "gnz11_only.toml"]
-    assume = parse.parse_configs(config_filenames)
-
+    config_path = sys.argv[1]    
+    print(F"parsing {config_path}")
+    with open(config_path, "rb") as f: 
+        config = tomli.load(f)
+    res_dir = config["paths"]["resolution_dir"]
+    base = config["paths"]["resolvedres_base"]
     # process sepectral resolution calibrations 
-    calibration_paths = ["{}/{}".format(assume["paths"]["resolution_dir"], f) 
-                         for f in os.listdir(assume["paths"]["resolution_dir"])
+    calibration_paths = [F"{res_dir}/{f}" 
+                         for f in os.listdir(res_dir)
                          if f[-9:]=="disp.fits"]  
     res_max = table.Table(dtype=[("grating", str), 
                                  ("max_res", float),
@@ -29,14 +30,13 @@ if __name__ == "__main__":
             R = hdul[1].data["R"]
             res = lam/R
             res_max.add_row([grating, np.max(res), np.min(1.0/R)])
-            save_path = ("{}/JWST-NIRSPEC-{}-resolution-resolved.dat"
-                         "".format(assume["paths"]["resolution_dir"], grating))
+            save_path = "{res_dir}/{base}-{grading}.dat"
             header = ("spectral resolution vs wavelength "
                       "for JWST NIRSPEC grating {}\n"
                       "wavelength [microns]    resolution [microns]")
             np.savetxt(save_path, 
                        np.column_stack((lam, res)),
                        header=header)
-    res_max.write(assume["paths"]["maxres_path"], overwrite=True,
+    res_max.write(config["paths"]["maxres_path"], overwrite=True,
                   format="ascii.commented_header")
 
