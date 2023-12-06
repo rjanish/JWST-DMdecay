@@ -3,6 +3,7 @@
 
 import os 
 import sys 
+import tomli 
 
 import numpy as np
 import astropy.io.fits as fits 
@@ -30,13 +31,14 @@ if __name__ == "__main__":
             R = hdul[1].data["R"]
             res = lam/R
             res_max.add_row([grating, np.max(res), np.min(1.0/R)])
-            save_path = "{res_dir}/{base}-{grading}.dat"
+            save_path = F"{res_dir}/{base}-{grating}.dat"
             header = ("spectral resolution vs wavelength "
                       "for JWST NIRSPEC grating {}\n"
                       "wavelength [microns]    resolution [microns]")
             np.savetxt(save_path, 
                        np.column_stack((lam, res)),
                        header=header)
-    res_max.write(config["paths"]["maxres_path"], overwrite=True,
+    res_max.write(F"{res_dir}/{config['paths']['maxres_path']}", 
+                  overwrite=True,
                   format="ascii.commented_header")
 
