@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-""" Download data from JWST archives """
+""" 
+Generate constraint plot from line and flux search results. 
+"""
 
 import sys
 import os 

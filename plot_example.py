@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-""" Download data from JWST archives """
+""" 
+Plot full spectrum with close-up of line model 
+"""
 
 import sys
 import os 

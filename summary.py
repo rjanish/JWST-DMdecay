@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-# coding: utf-8
+"""
+Print summary stastics from line search 
+"""
 
 
 import sys 
@@ -8,6 +9,7 @@ import numpy as np
 from scipy.special import erfc, erfcinv
 
 import DMdecay as dmd
+
 
 p_value = lambda chisq: 0.5*erfc(np.sqrt(0.5*chisq))
 

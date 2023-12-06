@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """ parse and condense JWST spectral resolution calibration files """
 
 

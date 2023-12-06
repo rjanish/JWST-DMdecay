@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+"""
+Testing for interruptable multiprocessing 
+"""
 
 import time
 import multiprocessing as mltproc  
