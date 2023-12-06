@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run DM analysis on sky spectra from GNz-11 observations, taking the
 redder spectrum only in the region of overlap (as in v1 2310.15395).
