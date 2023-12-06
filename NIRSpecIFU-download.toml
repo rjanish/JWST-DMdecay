@@ -1,0 +1,13 @@
+# download config script 
+
+[paths]
+download_root = "data"
+data_dir = "data/mastDownload/JWST"
+
+[selection]
+obs_collection = "JWST"
+instrument_name = "NIRSPEC/IFU"
+target_name = "GNZ11"
+
+[progress]
+Nstages = 10
