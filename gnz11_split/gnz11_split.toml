@@ -8,7 +8,11 @@ filenames = [
     "jw04426-o001_t001_nirspec_g140m-f100lp/jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits"]
 lambda_split = 1.65978  # lambda at which to truncate the blue spectrum in favor of the red
 lambda_min = 0.99       # min lambda of bluest spectrum
-
+rawlimits_filename = "line-rawlimits.out"
+bestfits_filename = "line-bestfits.out"
+pc_filename = "line-pc.out"
+lineoutput_filename = "line-output.json"
+fluxlimits_filename = "flux-limits.out"
 
 [analysis]
 width_factor = 150.0
@@ -22,7 +26,7 @@ Ntrials = 100
 Nbins = 15
 power_threshold = 0.1587
 Nthreads = 4
-inflate = 400
+inflate = 100
 # pc_step_factor = 5 
 
 

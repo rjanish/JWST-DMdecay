@@ -26,7 +26,7 @@ def chisq_dm_totalflux(rate, fixed_list, data, shift=0):
     return total - shift
 
 
-def run(data, configs, test_lams):
+def run(data, configs, test_lams, limits_path):
     limit = np.ones(test_lams.shape)*np.nan
     print("scanning {} mass trials for total flux limits...".format(len(test_lams)))
     t0 = time.time()
@@ -56,8 +56,6 @@ def run(data, configs, test_lams):
     limit_decayrate = convert.fluxscale_to_invsec(limit)    
     limit_g = convert.decayrate_to_axion_g(limit_decayrate, m)    
     # output 
-    limits_path = ("{}/flux-limits.dat"
-                   "".format(configs["run"]["name"]))
     limits_header = ("DM decay limits vs mass \n"
               "JWST NIRSPEC run {}\n"
               "mass [ev]    lifetime [sec]    "

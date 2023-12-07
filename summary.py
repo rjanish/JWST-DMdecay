@@ -15,9 +15,10 @@ p_value = lambda chisq: 0.5*erfc(np.sqrt(0.5*chisq))
 
 if __name__ == "__main__":
     config_filename = sys.argv[1]    
-    configs = dmd.prep.parse_configs(config_filename)
-    bestfits_path = "{}/line-bestfits.dat".format(configs["run"]["name"])
-    limits_path = "{}/line-limits.dat".format(configs["run"]["name"])
+    configs = dmd.prep.parse_configs(config_filename)    
+    run_name = configs["run"]["name"]
+    limits_path = F"{run_name}/{configs['run']['pc_filename']}"
+    bestfits_path = F"{run_name}/{configs['run']['bestfits_filename']}"
 
     bestfits = np.loadtxt(bestfits_path)
     chisqs = bestfits[:, 4]

@@ -49,9 +49,10 @@ if __name__ == "__main__":
     config_filename = sys.argv[1]    
     configs = dmd.prep.parse_configs(config_filename)
 
-    flux_limit_path = "{}/flux-limits.dat".format(configs["run"]["name"])
+    run_name = configs["run"]["name"]
+    flux_limit_path = F"{run_name}/{configs['run']['fluxlimits_filename']}"
     flux_limit = np.loadtxt(flux_limit_path)
-    line_limit_path = "{}/line-limits.dat".format(configs["run"]["name"])
+    line_limit_path = F"{run_name}/{configs['run']['pc_filename']}"
     line_limit = np.loadtxt(line_limit_path)
     plt.rcParams['text.usetex'] = True
 
