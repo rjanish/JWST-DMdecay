@@ -284,7 +284,7 @@ def find_pc_limit(configs, data, fit_region):
                    limit=500)[0]/norm - threshold)
     sol = opt.root_scalar(cdf_threshold, args=(power_threshold,),
                           bracket=[0, rate_max])
-    return [lam0, sol.root]
+    return [lam0, sol.root, upper_limits]
 
 def find_full_limit(configs, data, lam0):
     raw_results = find_raw_limit(configs, data, lam0)
@@ -300,16 +300,14 @@ def run(data, configs, test_lams, line_output_path):
     raw_limits_func = functools.partial(find_full_limit, configs, data)
     print(F"scanning {len(test_lams)} mass trials for line limits...")
     t0 = time.time()
-    with mltproc.Pool(configs["analysis"]["Nthreads"]) as pool:
-        raw_output = [] 
-        try:
+    with open(line_output_path, "w") as wf:
+        with mltproc.Pool(configs["analysis"]["Nthreads"]) as pool:
+            raw_output = [] 
             for result in pool.imap(raw_limits_func, test_lams):
                 raw_output.append(result)
-        except KeyboardInterrupt:
-            print("terminating line limits run")    
+                json.dump(nestedtolist(copy.deepcopy(raw_output)), wf, indent=4)
     dt_raw = time.time() - t0
-    with open(line_output_path, "w") as wf:
-        json.dump(nestedtolist(copy.deepcopy(raw_output)), wf, indent=4)
+    print("elapsed: {:0.2f} sec".format(time.time() - t0))
     return raw_output
  
 def parse_and_save(test_lams, line_output, run_name, 
