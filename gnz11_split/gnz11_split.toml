@@ -8,6 +8,7 @@ filenames = [
     "jw04426-o001_t001_nirspec_g140m-f100lp/jw04426-o001_t001_nirspec_g140m-f100lp_x1d.fits"]
 lambda_split = 1.65978  # lambda at which to truncate the blue spectrum in favor of the red
 lambda_min = 0.99       # min lambda of bluest spectrum
+# files to output results:
 rawlimits_filename = "line-rawlimits.out"
 bestfits_filename = "line-bestfits.out"
 pc_filename = "line-pc.out"
