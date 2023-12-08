@@ -23,12 +23,13 @@ chisq_step = 4.0
 limit_guess = [1e-5, 1e-3]
 max_clip_iters = 100
 clipping_factor = 3.0
-Ntrials = 100
+Ntrials = 1000
 Nbins = 15
 power_threshold = 0.1587
-Nthreads = 4
-inflate = 100
+Nthreads = 7
+inflate = 1
 # pc_step_factor = 5 
+checkpoint = 30
 
 
 [halo]

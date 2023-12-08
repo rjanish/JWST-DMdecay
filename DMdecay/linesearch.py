@@ -118,7 +118,8 @@ def find_raw_limit(configs, data, lam0):
     num_specs = len(sky_list)
     if num_specs == 0:
         return [[lmin, lmax], spec_list, [None], [None], 
-                [np.nan, None], [np.nan, None], np.nan]
+                [np.nan, None], [np.nan, None], np.nan, None, 
+                None, lam0, None, None, None, None, None, None]
 
     # fit continuum
     knots = np.zeros(num_specs*num_knots)
@@ -288,9 +289,12 @@ def find_pc_limit(configs, data, fit_region):
 
 def find_full_limit(configs, data, lam0):
     raw_results = find_raw_limit(configs, data, lam0)
-    fit_region = [raw_results[9], raw_results[7], raw_results[8], 
-                  raw_results[2], raw_results[5][1], raw_results[1]]
-    pc_results = find_pc_limit(configs, data, fit_region)
+    try:
+        fit_region = [raw_results[9], raw_results[7], raw_results[8], 
+                      raw_results[2], raw_results[5][1], raw_results[1]]
+        pc_results = find_pc_limit(configs, data, fit_region)
+    except:
+        pc_results = [np.nan, np.nan, None] 
     return raw_results + [pc_results[1]]
 
 def run(data, configs, test_lams, line_output_path):
@@ -303,10 +307,17 @@ def run(data, configs, test_lams, line_output_path):
     with open(line_output_path, "w") as wf:
         with mltproc.Pool(configs["analysis"]["Nthreads"]) as pool:
             raw_output = [] 
-            for result in pool.imap(raw_limits_func, test_lams):
-                raw_output.append(result)
-                json.dump(nestedtolist(copy.deepcopy(raw_output)), wf, indent=4)
+            try:
+                for result in pool.imap(raw_limits_func, test_lams):
+                    raw_output.append(result)
+                    if len(raw_output) % configs["analysis"]["checkpoint"] == 0:
+                        print(F"check: {len(raw_output)}")
+                        json.dump(nestedtolist(copy.deepcopy(raw_output)), wf, indent=4)
+            except KeyboardInterrupt:
+                pass    
+            json.dump(nestedtolist(copy.deepcopy(raw_output)), wf, indent=4)
     dt_raw = time.time() - t0
+    print(F"completed {len(raw_output)}/{len(test_lams)}")
     print("elapsed: {:0.2f} sec".format(time.time() - t0))
     return raw_output
  
