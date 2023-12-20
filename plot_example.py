@@ -67,7 +67,9 @@ if __name__ == "__main__":
 
     pc_input = [raw_out[9], raw_out[7], raw_out[8], 
                 raw_out[2], raw_out[5][1], raw_out[1]]
-    lam0_tmt, pc_limit = dmd.linesearch.find_pc_limit(configs, data, pc_input)
+    lam0_tmt, pc_limit, all_uppers = dmd.linesearch.find_pc_limit(configs, 
+                                                                  data, 
+                                                                  pc_input)
     pc_decayrate = dmd.conversions.fluxscale_to_invsec(pc_limit)   
     pc_g = dmd.conversions.decayrate_to_axion_g(pc_decayrate, m0) 
     print(F"       pc_g = {pc_g:0.2e} GeV^{-1}")
