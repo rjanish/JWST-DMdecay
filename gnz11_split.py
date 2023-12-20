@@ -9,6 +9,7 @@ import os
 import time
 import json
 
+import numpy as np
 import pandas as pd 
 
 import DMdecay as dmd
@@ -26,6 +27,17 @@ def partition_gnz11(data, lam_min, lam_split):
             spec["sky"] = spec["sky"][select]
             spec["error"] = spec["error"][select]
     return data 
+
+def subsample_array(a, n=1):
+    """ 
+    For ordered array a, generate a finer-sampled array which 
+    includes a and n equal-spaced points between each point of a
+    """
+    new = np.empty(a.size + n*(a.size - 1))
+    new[::(n + 1)] = a
+    for start in range(n):
+        new[(1 + start)::(n + 1)] = a[:-1] + (a[1:] - a[:-1])*(1 + start)/(1 + n)
+    return new
 
 
 if __name__ == "__main__":
@@ -57,13 +69,13 @@ if __name__ == "__main__":
     fluxlimits_path = F"{run_name}/{configs['run']['fluxlimits_filename']}"
     dmd.fluxlimit.run(data, configs, test_lams, fluxlimits_path)
     
-    rawlimits_path = F"{run_name}/{configs['run']['rawlimits_filename']}"
-    bestfits_path  = F"{run_name}/{configs['run']['bestfits_filename']}"
-    pc_path  = F"{run_name}/{configs['run']['pc_filename']}"
-    lineoutput_path  = F"{run_name}/{configs['run']['lineoutput_filename']}"
-    line_output = dmd.linesearch.run(data, configs, test_lams, lineoutput_path)
-    # print(F"line output: {len(line_output)}")
-    dmd.linesearch.parse_and_save(test_lams, line_output, run_name, 
-                                  rawlimits_path, bestfits_path, pc_path)
+    # rawlimits_path = F"{run_name}/{configs['run']['rawlimits_filename']}"
+    # bestfits_path  = F"{run_name}/{configs['run']['bestfits_filename']}"
+    # pc_path  = F"{run_name}/{configs['run']['pc_filename']}"
+    # lineoutput_path  = F"{run_name}/{configs['run']['lineoutput_filename']}"
+    # line_output = dmd.linesearch.run(data, configs, test_lams, lineoutput_path)
+    # # print(F"line output: {len(line_output)}")
+    # dmd.linesearch.parse_and_save(test_lams, line_output, run_name, 
+    #                               rawlimits_path, bestfits_path, pc_path)
     
     print(F"total: {(time.time() - t0)/60.0:0.2f} mins")

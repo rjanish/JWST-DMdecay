@@ -367,9 +367,8 @@ def parse_and_save(test_lams, line_output, run_name,
     # write output 
     pc_header = (F"DM decay power constrained results vs mass \n"
                   "JWST NIRSPEC run {run_name}\n"
-                  "lambda0 [micron]    mass [ev]    "    
-                  "raw limit [comp units]    "
-                  "pc limit [comp units]    "
+                  "lambda0 [micron]    "
+                  "g_a\\gamma\\gamma [GeV^-1] (for vanilla axion)    "
                   "pc used")
     np.savetxt(pc_path, 
                np.column_stack((m, finallimit_decayrate, 
