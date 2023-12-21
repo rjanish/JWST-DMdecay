@@ -17,10 +17,10 @@ if __name__ == "__main__":
     config_filename = sys.argv[1]    
     configs = dmd.prep.parse_configs(config_filename)    
     run_name = configs["run"]["name"]
-    limits_path = F"{run_name}/{configs['run']['pc_filename']}"
     bestfits_path = F"{run_name}/{configs['run']['bestfits_filename']}"
 
     bestfits = np.loadtxt(bestfits_path)
+    bestfits = bestfits[np.isfinite(bestfits[:, 2]), :] # omit nans 
     chisqs = bestfits[:, 4]
     num_trials = chisqs.size 
     # find 5-sigma local detentions
@@ -44,7 +44,17 @@ if __name__ == "__main__":
               "".format(np.sqrt(chisq), Z_global, best_g))
 
     # limits diagnostics 
+    limits_path = F"{run_name}/{configs['run']['pc_filename']}"
     limits = np.loadtxt(limits_path)
+    rawlimits_path = F"{run_name}/{configs['run']['rawlimits_filename']}"
+    rawlimits = np.loadtxt(rawlimits_path)
+    # replace nan's from power constraint with raw result
+    infs = ~np.isfinite(limits[:, 2])
+    limits[infs, 1:3] = rawlimits[infs, 1:3]
+    limits[infs, 3] = 0
+    # if raw result is also nan, just omit those datapoints 
+    limits = limits[np.isfinite(limits[:, 2]), :]
+
     print("\nlimits summary:\n")
     largest_lifetime = np.argmin(limits[:, 1])  # limits is decay rate
     print("largest constrainted lifetime:\n"
@@ -59,10 +69,13 @@ if __name__ == "__main__":
           "".format(limits[smallest_g, 0], limits[smallest_g, 2]))
 
     closest_to_1eV = np.argmin(np.absolute(limits[:, 0] - 1.0))
-    print("at m = {:0.3f}\n"
-          "    tau = {:0.2e}\n"
-          "      g = {:0.2e}\n"
-          "".format(limits[closest_to_1eV, 0], 
+    m_1eV = limits[closest_to_1eV, 0]
+    lambda_1eV = dmd.conversions.mass_to_wavelength(m_1eV)
+    print("at m = {:0.4f}\n"
+          "  lambda0 = {:0.4f}\n"
+          "      tau = {:0.2e}\n"
+          "        g = {:0.2e}\n"
+          "".format(m_1eV, lambda_1eV,
                     1.0/limits[closest_to_1eV, 1],
                     limits[closest_to_1eV, 2]))
 

@@ -5,7 +5,7 @@ import scipy.integrate as integ
 
 def sigma_from_fwhm(fwhm, lam0, sigma_v):
     sigma_inst = fwhm/(2*np.sqrt(2*np.log(2)))
-    return np.sqrt(sigma_inst**2 + sigma_v**2)
+    return np.sqrt(sigma_inst**2 + (lam0*sigma_v)**2)
 
 def MWDecayFlux(lam, lam0, decay_rate, D, sigma_lam):
 	""" 

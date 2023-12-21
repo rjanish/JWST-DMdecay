@@ -16,6 +16,12 @@ from gnz11_split import partition_gnz11
 if __name__ == "__main__":
     config_filename = sys.argv[1]    
     lam0 = float(sys.argv[2])
+    to_plot = sys.argv[3]
+    scale = int(sys.argv[4]) # plot model with strength rate*scale
+    try:
+        plot_yrange = map(float, sys.argv[5:7])
+    except:
+        plot_yrange = None
     configs = dmd.prep.parse_configs(config_filename)
     num_knots = configs["analysis"]["num_knots"]
     
@@ -55,13 +61,13 @@ if __name__ == "__main__":
     best_g = dmd.conversions.decayrate_to_axion_g(best_decayrate, m0) 
 
     print(F"fit line in {num_fitted_specs} spectra")
-    print(F"       lam0 = {lam0:0.2f} micron\n"
-          F"       lmin = {lmin:0.2f} micron\n"
-          F"       lmax = {lmax:0.2f} micron\n"
+    print(F"       lam0 = {lam0:0.4f} micron\n"
+          F"       lmin = {lmin:0.4f} micron\n"
+          F"       lmax = {lmax:0.4f} micron\n"
           F"  best_rate = {best_rate:0.2e} [fluxscale units]\n"
           F"delta_chisq = {delta_chisq:0.2f}\n"
           F" limit_rate = {limit_rate:0.2e} [fluxscale units]\n"
-          F"         m0 = {m0:0.2f} eV\n"
+          F"         m0 = {m0:0.4f} eV\n"
           F"     best_g = {best_g:0.2e} GeV^{-1}\n"
           F"    limit_g = {limit_g:0.2e} GeV^{-1}")
 
@@ -124,15 +130,22 @@ if __name__ == "__main__":
         # limiting model 
         limit_continuum_model = interp.CubicSpline(knots[start:end], 
                                                    limit_knots[start:end])
-        limit_model = (limit_continuum_model(lam_list[i]) + 
-                       dmd.linesearch.dm_line(lam_list[i], fixed_list[i], limit_rate))
-        ax2.plot(lam_list[i], limit_model, 
+        # if to_plot == "limit":
+        #     rate = limit_rate
+        #     print(F"plotting zoom-in limiting line with rate {rate:3f}")
+        # elif to_plot == "bestfit":
+        #     rate = best_rate
+        #     print(F"plotting zoom-in bestfit line with rate {rate:3f}")
+        model = (limit_continuum_model(lam_list[i]) + 
+                 dmd.linesearch.dm_line(lam_list[i], fixed_list[i], limit_rate))
+        ax2.plot(lam_list[i], model, 
                 color='firebrick', linestyle='-', marker='', 
                 linewidth=2, alpha=1)
         ax2.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
 
     ax2.set_xlim(lam0 - 0.1, lam0 + 0.1)
-    ax2.set_ylim(.08,.14)
+    if plot_yrange is not None:
+        ax2.set_ylim(*plot_yrange)
     ax2.set_aspect(1)
     ax2.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
                   fontsize=18)

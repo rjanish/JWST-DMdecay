@@ -65,17 +65,18 @@ if __name__ == "__main__":
     table.to_html(F"{run_name}/obv_table.html")
 
     test_lams = dmd.prep.get_mass_samples(data, configs)
+    print(test_lams.size)
     
     fluxlimits_path = F"{run_name}/{configs['run']['fluxlimits_filename']}"
     dmd.fluxlimit.run(data, configs, test_lams, fluxlimits_path)
     
-    # rawlimits_path = F"{run_name}/{configs['run']['rawlimits_filename']}"
-    # bestfits_path  = F"{run_name}/{configs['run']['bestfits_filename']}"
-    # pc_path  = F"{run_name}/{configs['run']['pc_filename']}"
-    # lineoutput_path  = F"{run_name}/{configs['run']['lineoutput_filename']}"
-    # line_output = dmd.linesearch.run(data, configs, test_lams, lineoutput_path)
-    # # print(F"line output: {len(line_output)}")
-    # dmd.linesearch.parse_and_save(test_lams, line_output, run_name, 
-    #                               rawlimits_path, bestfits_path, pc_path)
+    rawlimits_path = F"{run_name}/{configs['run']['rawlimits_filename']}"
+    bestfits_path  = F"{run_name}/{configs['run']['bestfits_filename']}"
+    pc_path  = F"{run_name}/{configs['run']['pc_filename']}"
+    lineoutput_path  = F"{run_name}/{configs['run']['lineoutput_filename']}"
+    line_output = dmd.linesearch.run(data, configs, test_lams, lineoutput_path)
+    # print(F"line output: {len(line_output)}")
+    dmd.linesearch.parse_and_save(test_lams, line_output, run_name, 
+                                  rawlimits_path, bestfits_path, pc_path)
     
     print(F"total: {(time.time() - t0)/60.0:0.2f} mins")

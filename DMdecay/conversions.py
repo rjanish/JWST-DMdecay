@@ -10,9 +10,16 @@ c_kms = 299792.458 # km/sec
 def wavelength_to_mass(lam):
     """ 
     convert two-photon decay wavelength in microns to 
-    progeniter mass in ev, via lam = 4pi/m
+    dm mass in ev, via lam = 4pi/m
     """
     return 2.47968/lam # eV
+
+def mass_to_wavelength(m):
+    """ 
+    convert dark matter mass in eV to the two-photon 
+    decay wavelength in microns via lam = 4pi/m
+    """
+    return 2.47968/m # micron
 
 def fluxscale_to_invsec(limit):
     """ 
