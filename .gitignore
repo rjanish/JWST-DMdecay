@@ -321,6 +321,7 @@ TSWLatexianTemp*
 *.html
 
 #specific 
+data
 data/*
 __pycache__/*
 old/*
