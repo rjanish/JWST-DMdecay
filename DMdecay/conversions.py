@@ -52,6 +52,13 @@ def fluxscale_to_invsec(limit):
     """
     return limit*(6.06401e-22) # 1/sec
 
+def invsec_to_fluxscale(rate):
+    """ 
+    convert decay rate in 1/sec to the flux scale 
+    used in the code, see fluxscale_to_invsec for details
+    """
+    return rate/(6.06401e-22) # MJy cm^3 / micron GeV kpc
+
 def decayrate_to_axion_g(rate, m):
     """ 
     convert decay rate in sec^-1 and axion mass in eV to the

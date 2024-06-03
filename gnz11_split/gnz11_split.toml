@@ -1,4 +1,9 @@
 # All setup parameters and metadata for a DM analysis 
+# 
+# This is the run using GN-Z11 data, split so that we only use the 
+# redder spectrum in the region of overlap
+#
+# This was used for the arxiv v1 2310.15395
 
 
 [run]
