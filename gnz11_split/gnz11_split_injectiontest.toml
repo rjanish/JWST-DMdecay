@@ -8,6 +8,8 @@ config_path = "gnz11_split.toml"
 
 [injection]
 strength = "limit"  # inject a signal with strength of the existing limit
-skipping = 1       # test only 1 out of every 'skipping' mass points 
-Ntrials = 5         # trials to run for each mass point, using different 
+skipping = 150       # test only 1 out of every 'skipping' mass points 
+Ntrials = 50         # trials to run for each mass point, using different 
                     # input signal strengths
+seed = 33			# seed for rng
+cores = 4

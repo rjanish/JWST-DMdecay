@@ -241,7 +241,7 @@ def find_raw_limit(configs, data, lam0):
             [limit_rate, limit_knots], [best_rate, best_knots],
             delta_chisq, lam_list_msk, error_list_msk, lam0,
             sky_list, lam_list, error_list, fixed_list, 
-            spec_list, res_list]
+            spec_list, res_list, mask_list]
      
 
 def find_pc_limit(configs, data, fit_region):
@@ -255,7 +255,6 @@ def find_pc_limit(configs, data, fit_region):
     upper_limits = np.nan*np.ones(Ntrials)
     for trial in range(Ntrials):
         mock_data = []
-        trial_sky_list_msk = []
         for i, spec_i in enumerate(spec_list):
             mock_data.append({})
             mock_data[-1]["res"] = data[spec_i]["res"]
