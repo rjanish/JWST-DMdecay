@@ -47,7 +47,7 @@ def run_mock_set(data, prev_configs, Ntrials, test):
         mock_data[-1]["res"] = data[spec_i]["res"]
         mock_data[-1]["D"] = data[spec_i]["D"]
         mock_data[-1]["lam"] = lam_list_msk[j]
-        mock_data[-1]["error"] = error_list_msk[j]*np.sqrt(2)
+        mock_data[-1]["error"] = error_list_msk[j]#*np.sqrt(2)
         sigma_full = dmd.halo.sigma_from_fwhm(
             data[spec_i]["res"], lam_test, 
             prev_configs["halo"]["sigma_v"]) 
@@ -57,10 +57,11 @@ def run_mock_set(data, prev_configs, Ntrials, test):
     # add noise and fit mocks
     for trial in range(Ntrials):
         for j, spec_i in enumerate(spec_list):
-            Npts = error_list_msk[j].size
-            roll = np.random.default_rng()
-            noise_draw = roll.normal(loc=0, 
-                                     scale=error_list_msk[j], size=Npts)
+            # Npts = error_list_msk[j].size
+            # roll = np.random.default_rng()
+            # noise_draw = roll.normal(loc=0, 
+            #                          scale=error_list_msk[j], size=Npts)
+            noise_draw = 0
             mock_data[-1]["sky"] = \
                 sky_list[j][~mask_list[j]] + noise_draw + fake_signal[j]
         # print(F"fitting trial {trial} of lam={lam_test:.2f} micron")
