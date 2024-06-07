@@ -21,7 +21,7 @@ import JWSTutils as jwst
 
 import gnz11_split  # driver script for existing run
 
-def run_mock_set(data, prev_configs, Ntrials, seed, test):
+def run_mock_set(data, prev_configs, Ntrials, test):
     """
     Fit a set of Ntrials mock specttra with the same injected signal of strength test[1] [code units] located at test[0] [micron].
     """
@@ -58,16 +58,21 @@ def run_mock_set(data, prev_configs, Ntrials, seed, test):
     for trial in range(Ntrials):
         for j, spec_i in enumerate(spec_list):
             Npts = error_list_msk[j].size
-            roll = np.random.default_rng(seed=seed)
+            roll = np.random.default_rng()
             noise_draw = roll.normal(loc=0, 
                                      scale=error_list_msk[j], size=Npts)
             mock_data[-1]["sky"] = \
                 sky_list[j][~mask_list[j]] + noise_draw + fake_signal[j]
         # print(F"fitting trial {trial} of lam={lam_test:.2f} micron")
-        new_rawlimits = dmd.linesearch.find_raw_limit(prev_configs, 
-                                                      mock_data, lam_test)
-        test_results[trial, 3] = new_rawlimits[5][0] # new best fit
-        test_results[trial, 4] = new_rawlimits[4][0] # new raw limit
+        try:
+            new_rawlimits = dmd.linesearch.find_raw_limit(prev_configs, 
+                                                        mock_data, lam_test)
+            test_results[trial, 3] = new_rawlimits[5][0] # new best fit
+            test_results[trial, 4] = new_rawlimits[4][0] # new raw limit
+        except ValueError:
+            print("value error: skipping {lam_test:.2f} micron")
+            test_results[trial, 3] = np.nan
+            test_results[trial, 4] = np.nan
     return test_results
 
 if __name__ == "__main__":
@@ -99,7 +104,7 @@ if __name__ == "__main__":
         F"{run_name}/{prev_configs['run']['rawlimits_filename']}")
     print("Running injection test... ")
     Ntrials = cur_configs["injection"]["Ntrials"]
-    seed = cur_configs["injection"]["seed"]
+    # seed = cur_configs["injection"]["seed"]
     cores = cur_configs["injection"]["cores"]
     valid = np.isfinite(rawlimits[:, 1])
     skipping = cur_configs["injection"]["skipping"]
@@ -107,8 +112,9 @@ if __name__ == "__main__":
     lam_to_test = dmd.conversions.mass_to_wavelength(mass_to_test)
     Nlams = lam_to_test.shape[0]
     exisitng_limit_invsec = rawlimits[valid, :][::skipping, 1]
-    decayrate_to_test = \
-        dmd.conversions.invsec_to_fluxscale(exisitng_limit_invsec)
+    input_scale_factor = 0.1
+    decayrate_to_test = dmd.conversions.invsec_to_fluxscale(
+        exisitng_limit_invsec*input_scale_factor)
     test_results = np.empty((Nlams*Ntrials, 5))
         # col: lam, old raw limit, injected flux, new best fit, new raw limit
 
@@ -117,16 +123,16 @@ if __name__ == "__main__":
     #         run_mock_set(data, prev_configs, lam_to_test[i], 
     #                      decayrate_to_test[i], Ntrials, seed)
         
-    wrapper = partial(run_mock_set, data, prev_configs, Ntrials, seed)
+    wrapper = partial(run_mock_set, data, prev_configs, Ntrials)
     inputs = zip(lam_to_test, decayrate_to_test)
     with Pool(processes=cores) as pool:
         iteration = tqdm(pool.imap(wrapper, inputs), total=Nlams, position=0)
         test_results = np.vstack(list(iteration))
     test_path = F"{run_name}/injection_results.dat"
-    # np.savetxt(test_path, test_results)
+    np.savetxt(test_path, test_results)
 
     # print stats
-    discrepancy = (test_results[:, 4] - test_results[:, 2])/test_results[:, 1]
+    discrepancy = (test_results[:, 4] - test_results[:, 2])/test_results[:, 2]
     num_negative = np.sum(discrepancy < 0)
     frac_negative = num_negative/discrepancy.size
     expected_error = np.sqrt(1/discrepancy.size)
@@ -151,5 +157,5 @@ if __name__ == "__main__":
     ax.add_artist(
         AnchoredText(neg_frac_str, loc='upper right', 
                      prop=dict(color="firebrick"), frameon=False))
-    # fig.savefig(F"{run_name}/injection_discrepancy.png")
+    fig.savefig(F"{run_name}/injection_discrepancy.png")
     plt.show()

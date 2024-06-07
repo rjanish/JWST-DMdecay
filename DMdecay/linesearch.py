@@ -228,12 +228,21 @@ def find_raw_limit(configs, data, lam0):
                 best_knots[knot_index] - 2*error)    
             knot_bounds[knot_index, 1] = (
                 best_knots[knot_index] + 2*error)  
-    maximize_rate_sol = opt.minimize(rate_func, best_knots,
-                                     bounds=knot_bounds,
-                                     args=(best_rate, knots, fixed_list, 
-                                           lam_list_msk, sky_list_msk, 
-                                           error_list_msk, threshold,
-                                           limit_guess[1]))
+    try:
+        maximize_rate_sol = opt.minimize(rate_func, best_knots,
+                                        bounds=knot_bounds,
+                                        args=(best_rate, knots, fixed_list, 
+                                            lam_list_msk, sky_list_msk, 
+                                            error_list_msk, threshold,
+                                            limit_guess[1]))
+    except ValueError:
+        print("ValueError in minimize, increasing upper bound")
+        maximize_rate_sol = opt.minimize(rate_func, best_knots,
+                                        bounds=knot_bounds,
+                                        args=(best_rate, knots, fixed_list, 
+                                            lam_list_msk, sky_list_msk, 
+                                            error_list_msk, threshold,
+                                            500*limit_guess[1]))
 
     limit_rate = - maximize_rate_sol.fun
     limit_knots = maximize_rate_sol.x
