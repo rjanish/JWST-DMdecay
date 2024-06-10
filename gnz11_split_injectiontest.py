@@ -10,6 +10,8 @@ import time
 import tomli
 from multiprocessing import Pool
 from functools import partial
+import pickle as pkl
+from copy import deepcopy
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,59 +23,46 @@ import JWSTutils as jwst
 
 import gnz11_split  # driver script for existing run
 
-def run_mock_set(data, prev_configs, Ntrials, test):
+def run_mock_set(data, configs, Ntrials, input_factor, lam_test):
     """
-    Fit a set of Ntrials mock specttra with the same injected signal of strength test[1] [code units] located at test[0] [micron].
+    Fit a set of Ntrials mock specttra with the same injected signal of strength limit*input_factor [code units] located at lam_test [micron].
     """
-    lam_test, input_strength = test
     test_results = np.empty((Ntrials, 5))
         # cols: lam, true raw limit, injected flux, 
-        #       mock best fit, mock raw limit       
+        #       mock best fit, mock raw limit      
     test_results[:, 0] = lam_test
-    old_output_redo = dmd.linesearch.find_raw_limit(prev_configs, data, 
-                                                    lam_test)
-    test_results[:, 1] = old_output_redo[4][0]
-    # generate mock data list
-    test_results[:, 2] = input_strength # injected signal
-    spec_list = old_output_redo[1]
-    lam_list_msk = old_output_redo[7]
-    error_list_msk = old_output_redo[8]
-    sky_list = old_output_redo[10]
-    mask_list = old_output_redo[16]
-    mock_data = []
-    fake_signal = []
-    for j, spec_i in enumerate(spec_list):
-        mock_data.append({})
-        mock_data[-1]["res"] = data[spec_i]["res"]
-        mock_data[-1]["D"] = data[spec_i]["D"]
-        mock_data[-1]["lam"] = lam_list_msk[j]
-        mock_data[-1]["error"] = error_list_msk[j]#*np.sqrt(2)
-        sigma_full = dmd.halo.sigma_from_fwhm(
-            data[spec_i]["res"], lam_test, 
-            prev_configs["halo"]["sigma_v"]) 
-        fake_signal.append(
-            dmd.halo.MWDecayFlux(lam_list_msk[j], lam_test, input_strength, 
-                                 data[spec_i]["D"], sigma_full))
-    # add noise and fit mocks
+    roll = np.random.default_rng()
     for trial in range(Ntrials):
-        for j, spec_i in enumerate(spec_list):
-            # Npts = error_list_msk[j].size
-            # roll = np.random.default_rng()
-            # noise_draw = roll.normal(loc=0, 
-            #                          scale=error_list_msk[j], size=Npts)
-            noise_draw = 0
-            mock_data[-1]["sky"] = \
-                sky_list[j][~mask_list[j]] + noise_draw + fake_signal[j]
-        # print(F"fitting trial {trial} of lam={lam_test:.2f} micron")
-        try:
-            new_rawlimits = dmd.linesearch.find_raw_limit(prev_configs, 
-                                                        mock_data, lam_test)
-            test_results[trial, 3] = new_rawlimits[5][0] # new best fit
-            test_results[trial, 4] = new_rawlimits[4][0] # new raw limit
-        except ValueError:
-            print("value error: skipping {lam_test:.2f} micron")
-            test_results[trial, 3] = np.nan
-            test_results[trial, 4] = np.nan
+        mock_data = deepcopy(data)
+        # fit with extra noise and no injected signal
+        for mock_spec in mock_data:
+            valid = mock_spec["error"] > 0 
+            noise_draw = roll.normal(loc=0, scale=mock_spec["error"][valid])
+            mock_spec["sky"][valid] += noise_draw
+            mock_spec["error"][valid] *= np.sqrt(2)
+        no_sig = dmd.linesearch.find_raw_limit(configs, mock_data, lam_test)
+        test_results[trial, 1] = no_sig[4][0]              # raw limit 
+        test_results[trial, 2] = input_factor*no_sig[4][0] # injected signal
+        # inject signal and refit
+        for mock_spec in mock_data:
+            sigma_full = dmd.halo.sigma_from_fwhm(mock_spec["res"], lam_test,
+                                                  configs["halo"]["sigma_v"]) 
+            mock_spec["sky"] += \
+                dmd.halo.MWDecayFlux(mock_spec["lam"], lam_test,
+                                     test_results[trial, 2], mock_spec["D"],
+                                     sigma_full)
+        injected = dmd.linesearch.find_raw_limit(configs, mock_data, lam_test)
+        test_results[trial, 3] = injected[5][0] # new best fit
+        test_results[trial, 4] = injected[4][0] # new raw limit
+        # save for comparison 
+        output = {"lam_test":lam_test, "data":mock_data, 
+                  "G":test_results[trial, 2],
+                  "new_bf":injected[5][0], 
+                  "new_rawlimit":injected[4][0]}
+        output_path = \
+            F"{run_name}/injection/trial-noise-{trial}-{lam_test:0.6f}.pkl"
+        with open(output_path, "wb") as jar:
+            pkl.dump(output, jar)
     return test_results
 
 if __name__ == "__main__":
@@ -113,9 +102,9 @@ if __name__ == "__main__":
     lam_to_test = dmd.conversions.mass_to_wavelength(mass_to_test)
     Nlams = lam_to_test.shape[0]
     exisitng_limit_invsec = rawlimits[valid, :][::skipping, 1]
-    input_scale_factor = 0.1
-    decayrate_to_test = dmd.conversions.invsec_to_fluxscale(
-        exisitng_limit_invsec*input_scale_factor)
+    input_factor = 1
+    decayrate_to_test = \
+        dmd.conversions.invsec_to_fluxscale(exisitng_limit_invsec)
     test_results = np.empty((Nlams*Ntrials, 5))
         # col: lam, old raw limit, injected flux, new best fit, new raw limit
 
@@ -124,10 +113,11 @@ if __name__ == "__main__":
     #         run_mock_set(data, prev_configs, lam_to_test[i], 
     #                      decayrate_to_test[i], Ntrials, seed)
         
-    wrapper = partial(run_mock_set, data, prev_configs, Ntrials)
-    inputs = zip(lam_to_test, decayrate_to_test)
+    wrapper = partial(run_mock_set, data, prev_configs, Ntrials, input_factor)
+    inputs = lam_to_test
     with Pool(processes=cores) as pool:
-        iteration = tqdm(pool.imap(wrapper, inputs), total=Nlams, position=0)
+        iteration = tqdm(pool.imap(wrapper, inputs), 
+                         total=Nlams, position=0)
         test_results = np.vstack(list(iteration))
     test_path = F"{run_name}/injection_results.dat"
     np.savetxt(test_path, test_results)

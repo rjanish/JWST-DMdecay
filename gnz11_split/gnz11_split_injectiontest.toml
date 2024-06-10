@@ -12,4 +12,4 @@ skipping = 1       # test only 1 out of every 'skipping' mass points
 Ntrials = 1         # trials to run for each mass point, using different 
                     # input signal strengths
 #seed = 33			# seed for rng
-cores = 8
+cores = 3
