@@ -328,3 +328,4 @@ old/*
 AxionLimits
 *__pycache__
 *.pkl
+.ipynb_checkpoints/*
