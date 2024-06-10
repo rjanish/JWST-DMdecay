@@ -1,0 +1,11 @@
+# An injection test of the results of gnz11_split 
+
+[previous] 
+config_path = "gnz11_split.toml"  
+	# The config file for the run on which this test will be build.  From this 
+	# config we get the path to the results of the old run, which is assumed 
+	# to be in the same directory as this file. 
+
+[tests]
+skipping = 1       # test only 1 out of every 'skipping' mass points 
+cores = 3
