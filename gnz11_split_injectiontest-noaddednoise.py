@@ -1,6 +1,5 @@
 """
-Run DM analysis on sky spectra from GNz-11 observations, taking the
-redder spectrum only in the region of overlap (as in v1 2310.15395).
+Run DM analysis injection test on the split sky spectra from GNz-11 split observations (as in v1 2310.15395).
 """
 
 

@@ -307,7 +307,7 @@ TSWLatexianTemp*
 #*Notes.bib
 
 # calculations
-*.ipynb
+# *.ipynb
 *.nb
 
 # data 

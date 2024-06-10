@@ -119,7 +119,7 @@ def find_raw_limit(configs, data, lam0):
     if num_specs == 0:
         return [[lmin, lmax], spec_list, [None], [None], 
                 [np.nan, None], [np.nan, None], np.nan, None, 
-                None, lam0, None, None, None, None, None, None]
+                None, lam0, None, None, None, None, None, None, None, None]
 
     # fit continuum
     knots = np.zeros(num_specs*num_knots)
@@ -250,7 +250,7 @@ def find_raw_limit(configs, data, lam0):
             [limit_rate, limit_knots], [best_rate, best_knots],
             delta_chisq, lam_list_msk, error_list_msk, lam0,
             sky_list, lam_list, error_list, fixed_list, 
-            spec_list, res_list, mask_list]
+            spec_list, res_list, mask_list, sky_list_msk]
      
 
 def find_pc_limit(configs, data, fit_region):
