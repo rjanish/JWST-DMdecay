@@ -1,0 +1,14 @@
+# An injection test of the results of gnz11_split 
+
+[previous] 
+config_path = "gnz11_split.toml"  
+	# The config file for the run on which this test will be build.  From this 
+	# config we get the path to the results of the old run, which is assumed 
+	# to be in the same directory as this file. 
+
+[injection]
+name = "old"
+skipping = 1        # test only 1 out of every 'skipping' mass points 
+Ntrials = 1         # trials to run for each mass point, using different 
+                    # noise realizations
+input_factor = 1    # injected singal strength relative to true limit 
