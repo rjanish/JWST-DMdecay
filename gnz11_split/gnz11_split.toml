@@ -23,7 +23,7 @@ fluxlimits_filename = "flux-limits.out"
 [analysis]
 width_factor = 150.0
 padding = 1e-8
-num_knots = 5
+num_knots = 10
 chisq_step = 4.0
 limit_guess = [1e-5, 1e-3]
 max_clip_iters = 100

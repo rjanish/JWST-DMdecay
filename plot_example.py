@@ -3,7 +3,7 @@ Plot full spectrum with close-up of line model
 """
 
 import sys
-import os 
+import time
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,6 +35,7 @@ if __name__ == "__main__":
     num_specs = len(data)
     print()
 
+    t0 = time.time()
     raw_out = dmd.linesearch.find_raw_limit(configs, data, lam0)
     [[lmin, lmax], 
      spec_list, 
@@ -51,7 +52,9 @@ if __name__ == "__main__":
      error_list, 
      fixed_list, 
      spec_list, 
-     res_list] = raw_out
+     res_list, 
+     mask_list, 
+     sky_list_msk] = raw_out
     num_fitted_specs = len(knots)//num_knots
 
     m0 = dmd.conversions.wavelength_to_mass(lam0)
@@ -73,18 +76,24 @@ if __name__ == "__main__":
 
     pc_input = [raw_out[9], raw_out[7], raw_out[8], 
                 raw_out[2], raw_out[5][1], raw_out[1]]
-    lam0_tmt, pc_limit, all_uppers = dmd.linesearch.find_pc_limit(configs, 
-                                                                  data, 
-                                                                  pc_input)
-    pc_decayrate = dmd.conversions.fluxscale_to_invsec(pc_limit)   
-    pc_g = dmd.conversions.decayrate_to_axion_g(pc_decayrate, m0) 
-    print(F"       pc_g = {pc_g:0.2e} GeV^{-1}")
-
+    if to_plot == "pc":
+        lam0_tmt, pc_limit, all_uppers = dmd.linesearch.find_pc_limit(configs, 
+                                                                    data, 
+                                                                    pc_input)
+        pc_decayrate = dmd.conversions.fluxscale_to_invsec(pc_limit)   
+        pc_g = dmd.conversions.decayrate_to_axion_g(pc_decayrate, m0) 
+        print(F"       pc_g = {pc_g:0.2e} GeV^{-1}")
+    print(F"\nelapsed time: {time.time() - t0:0.2f} seconds")
 
 
     plt.rcParams['text.usetex'] = True
-    fig, [ax1, ax2] = plt.subplots(2, 1)
+    fig = plt.figure()
+    # fig, [ax_fullspec, ax_zoom, ax_resid] = plt.subplots(3, 1)
+    # ax_resid.sharex(ax_zoom)
 
+    gs_fullspec = fig.add_gridspec(7, 1)
+    gs_zoom = fig.add_gridspec(7, 1, hspace=0)
+    ax_fullspec = fig.add_subplot(gs_fullspec[0:3, :])
     # plot full spectral range
     red = np.argmax(np.asarray([np.min(spec["lam"]) for spec in data]))
     for index, spec in enumerate(data):
@@ -94,7 +103,7 @@ if __name__ == "__main__":
         else:
             color = "mediumblue"
             alpha = 0.7
-        ax1.step(spec["lam"], spec["sky"], color=color, alpha=alpha)
+        ax_fullspec.step(spec["lam"], spec["sky"], color=color, alpha=alpha)
 
     # add line fit window
     for i in range(num_fitted_specs):    
@@ -105,27 +114,29 @@ if __name__ == "__main__":
                                                    limit_knots[start:end])
         limit_model = (limit_continuum_model(lam_list[i]) + 
                        dmd.linesearch.dm_line(lam_list[i], fixed_list[i], limit_rate))
-        ax1.plot(lam_list[i], limit_model, 
+        ax_fullspec.plot(lam_list[i], limit_model, 
                 color='black', linestyle='-', marker='', 
                 linewidth=2, alpha=1)
-        ax1.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
+        ax_fullspec.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
         
-    ax1.set_aspect(2)
-    ax1.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
+    # ax_fullspec.set_aspect(2)
+    ax_fullspec.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
                   fontsize=18)
-    ax1.set_ylabel(r"$\displaystyle \Phi \; [{\rm MJy/sr}]$", 
+    ax_fullspec.set_ylabel(r"$\displaystyle \Phi \; [{\rm MJy/sr}]$", 
                   fontsize=18)
-    ax1.tick_params(axis='both', which='major', labelsize=16)
+    ax_fullspec.tick_params(axis='both', which='major', labelsize=18)
 
     # zoom in on fit line
+    ax_zoom = fig.add_subplot(gs_zoom[3:6, :])
+    ax_resid = fig.add_subplot(gs_zoom[6, :])
     for i in range(num_fitted_specs):
         start = i*num_knots
         end = (i + 1)*num_knots
-        ax2.fill_between(lam_list[i], 
+        ax_zoom.fill_between(lam_list[i], 
                     sky_list[i] - error_list[i], 
                     sky_list[i] + error_list[i], step="mid",
                     color='black', alpha=0.3)
-        ax2.step(lam_list[i], sky_list[i], where="mid",
+        ax_zoom.step(lam_list[i], sky_list[i], where="mid",
                 color='black', alpha=0.8)
         # limiting model 
         limit_continuum_model = interp.CubicSpline(knots[start:end], 
@@ -138,22 +149,38 @@ if __name__ == "__main__":
         #     print(F"plotting zoom-in bestfit line with rate {rate:3f}")
         model = (limit_continuum_model(lam_list[i]) + 
                  dmd.linesearch.dm_line(lam_list[i], fixed_list[i], limit_rate))
-        ax2.plot(lam_list[i], model, 
+        ax_zoom.plot(lam_list[i], model, 
                 color='firebrick', linestyle='-', marker='', 
                 linewidth=2, alpha=1)
-        ax2.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
+        ax_zoom.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
 
-    ax2.set_xlim(lam0 - 0.1, lam0 + 0.1)
+        # residuals 
+        ax_resid.step(lam_list[i], sky_list[i] - model, 
+                color='firebrick', linestyle='-', marker='', 
+                linewidth=2, alpha=1)
+        ax_resid.fill_between(lam_list[i], -error_list[i], error_list[i],
+                              step="mid", color='black', alpha=0.3) 
+        ax_resid.axhline(0, linestyle='solid', color='black', alpha=0.5)
+        ax_resid.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
+
+
+    ax_zoom.set_xlim(lam0 - 0.1, lam0 + 0.1)
     if plot_yrange is not None:
-        ax2.set_ylim(*plot_yrange)
-    ax2.set_aspect(1)
-    ax2.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
-                  fontsize=18)
-    ax2.set_ylabel(r"$\displaystyle \Phi \; [{\rm MJy/sr}]$", 
-                  fontsize=18)
-    ax2.tick_params(axis='both', which='major', labelsize=16)
-    fig.tight_layout(pad=2)
+        ax_zoom.set_ylim(*plot_yrange)
+    # ax_zoom.set_aspect(1)
+    ax_resid.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
+                fontsize=18)
+    ax_zoom.set_ylabel(r"$\displaystyle \Phi \; [{\rm MJy/sr}]$", 
+                fontsize=18)
+    ax_resid.set_ylabel(r"residual", fontsize=18)
+
+    ax_zoom.tick_params(axis='both', which='major', labelsize=16)
+    ax_zoom.set_ylim(0.08, 0.15)
+    ax_resid.tick_params(axis='both', which='major', labelsize=16)
+    ax_resid.set_ylim(-0.018, 0.018)
+    fig.tight_layout(pad=1)
     fig.set_size_inches(12, 8)
     output_path = "{}/combined-lam{}.pdf".format(configs["run"]["name"], lam0)
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
 
