@@ -9,7 +9,7 @@ config_path = "gnz11_split.toml"
 [injection]
 name = "limit_with_noise"
 skipping = 1        # test only 1 out of every 'skipping' mass points 
-Ntrials = 1         # trials to run for each mass point, using different 
+Ntrials = 100         # trials to run for each mass point, using different 
                     # noise realizations
 input_factor = 1    # injected singal strength relative to true limit 
 noise_factor = 1    # ammount of Gauss noise to add realitive to real 

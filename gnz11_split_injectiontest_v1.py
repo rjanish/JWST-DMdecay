@@ -70,8 +70,8 @@ if __name__ == "__main__":
         existing_limit = \
             dmd.conversions.invsec_to_fluxscale(decayrate_test) # code units
         test_results[i, 1] = existing_limit
-        G = existing_limit*loguniform.rvs(0.33, 3) 
-        test_results[i, 2] = G  # input signal
+        input_factor = cur_configs["injection"]["input_factor"]
+        test_results[i, 2] = existing_limit*input_factor  # input signal
         for spec_index in range(len(trial_data)):
             # get signal sigma_lambda, combining instrumental and DM velocity 
             sigma_full = dmd.halo.sigma_from_fwhm(
@@ -79,8 +79,9 @@ if __name__ == "__main__":
                 prev_configs["halo"]["sigma_v"]) 
             trial_data[spec_index]["sky"] = (
                 data[spec_index]["sky"] +
-                dmd.halo.MWDecayFlux(trial_data[spec_index]["lam"], lam_test,
-                                     G, trial_data[spec_index]["D"], 
+                dmd.halo.MWDecayFlux(trial_data[spec_index]["lam"], 
+                                     lam_test, test_results[i, 2], 
+                                     trial_data[spec_index]["D"], 
                                      sigma_full))
         new_rawlimits = \
             dmd.linesearch.find_raw_limit(prev_configs, trial_data, lam_test)
@@ -90,26 +91,36 @@ if __name__ == "__main__":
     np.savetxt(test_path, test_results)
 
     # print stats
-    discrepancy = (test_results[:, 4] - test_results[:, 2])/test_results[:, 1]
+    test_name = cur_configs["injection"]["name"]
+    noise_estimate = np.min([np.median(spec["error"]) for spec in data])
+    discrepancy = (test_results[:, 4] - test_results[:, 2])/noise_estimate
     num_negative = np.sum(discrepancy < 0)
     frac_negative = num_negative/discrepancy.size
-    print(F"fraction of negative discrepancies: {100*frac_negative:0.4f}%")
+    expected_error = np.sqrt(1/discrepancy.size)
+    neg_frac_str = (F"negative fraction = {100*frac_negative:0.1f}%"
+                    F" +/- {100*expected_error:0.1f}%")
+    print(neg_frac_str)
 
     fig, ax = plt.subplots()
     ax.set_xlabel("relative discrepancy")
     ax.set_ylabel("count")
     ax.set_title("relative discrepancy between raw limit and injected flux")
-    Nhist = 20
-    positive_bins = np.linspace(0, discrepancy.max() + 1, Nhist)
-    positive_hist = ax.hist(discrepancy[discrepancy >= 0],
+    Nhist = 50
+    margin_factor = 1.1
+    positive_disc = discrepancy >= 0
+    max_right = discrepancy[positive_disc].max()*margin_factor
+    positive_bins = np.linspace(0, max_right, Nhist)
+    positive_hist = ax.hist(discrepancy[positive_disc],
                             bins=positive_bins, histtype='step', color='black')
     if num_negative > 0:
         bin_width = positive_hist[1][1] - positive_hist[1][0]
-        negative_bins = -np.arange(0, -discrepancy.min(), bin_width)[::-1]
-        ax.hist(discrepancy[discrepancy < 0], bins=negative_bins, 
+        negative_bins = -np.arange(0, -discrepancy.min()+1.5*bin_width, 
+                                   bin_width)[::-1]
+        ax.hist(discrepancy[~positive_disc], bins=negative_bins, 
                 histtype='step', color='red')
     ax.axvline(0, color='gray', linestyle='--')
     ax.add_artist(
-        AnchoredText(F"negative fraction = {100*frac_negative:0.2f}%", loc='upper right', prop=dict(color="firebrick"), frameon=False))
-    fig.savefig(F"{run_name}/injection_discrepancy.png")
+        AnchoredText(neg_frac_str, loc='upper right', 
+                     prop=dict(color="firebrick"), frameon=False))
+    fig.savefig(F"{run_name}/{test_name}-injection_discrepancy.png")
     plt.show()
