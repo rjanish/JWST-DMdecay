@@ -35,18 +35,10 @@ if __name__ == "__main__":
     num_specs = len(data)
     print()
 
-    plt.rcParams['text.usetex'] = True
-    fig = plt.figure()
-    # fig, [ax_fullspec, ax_zoom, ax_resid] = plt.subplots(3, 1)
-    # ax_resid.sharex(ax_zoom)
-
-    gs_fullspec = fig.add_gridspec(7, 1, hspace=2, top=0.95)
-    gs_zoom = fig.add_gridspec(7, 1, hspace=0, top=0.8)
-    ax_fullspec = fig.add_subplot(gs_fullspec[0:3, :])
-    ax_zoom = fig.add_subplot(gs_zoom[3:6, :])
-    ax_resid = fig.add_subplot(gs_zoom[6, :])
 
     dofs = [5, 15]
+    limits = {}
+
     styles = ["solid", "dotted"]
     for j, (num_knots, style) in enumerate(zip(dofs, styles)):
         configs["analysis"]["num_knots"] = num_knots
