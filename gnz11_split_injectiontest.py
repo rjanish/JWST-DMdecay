@@ -128,10 +128,12 @@ if __name__ == "__main__":
     discrepancy = (test_results[:, 4] - test_results[:, 2])/noise_estimate
     num_negative = np.sum(discrepancy < 0)
     frac_negative = num_negative/discrepancy.size
-    expected_error = np.sqrt(1/discrepancy.size)
-    neg_frac_str = (F"negative fraction = {100*frac_negative:0.1f}%"
-                    F" +/- {100*expected_error:0.1f}%")
-    print(neg_frac_str)
+    p_negative = 0.023
+    expected_error = np.sqrt(p_negative/discrepancy.size)
+    results_str = (F"observed negative fraction = {100*frac_negative:0.2f}%\n"
+                   F"expected negative fraction = {100*p_negative:0.2f}% +/- "
+                   F"{100*expected_error:0.2f}%")
+    print(results_str)
 
     fig, ax = plt.subplots()
     ax.set_xlabel("relative discrepancy")
@@ -151,7 +153,7 @@ if __name__ == "__main__":
                 histtype='step', color='red')
     ax.axvline(0, color='gray', linestyle='--')
     ax.add_artist(
-        AnchoredText(neg_frac_str, loc='upper right', 
+        AnchoredText(results_str, loc='upper right', 
                      prop=dict(color="firebrick"), frameon=False))
     fig.savefig(F"{run_name}/{test_name}-injection_discrepancy.png")
     plt.show()
