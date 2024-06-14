@@ -314,6 +314,7 @@ TSWLatexianTemp*
 *.fits
 *.dat
 *.json
+*.csv
 
 # figures 
 *.png 
