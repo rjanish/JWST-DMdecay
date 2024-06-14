@@ -119,14 +119,17 @@ if __name__ == "__main__":
                     start = i*num_knots
                     end = (i + 1)*num_knots
                     # limiting model 
-                    limit_continuum_model = interp.CubicSpline(knots[start:end], 
-                                                            limit_knots[start:end])
-                    limit_model = (limit_continuum_model(lam_list[i]) + 
-                                dmd.linesearch.dm_line(lam_list[i], fixed_list[i], limit_rate))
-                    ax_fullspec.plot(lam_list[i], limit_model, 
-                            color='black', linestyle='-', marker='', 
-                            linewidth=2, alpha=1)
-                    ax_fullspec.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
+                    limit_continuum_model = \
+                        interp.CubicSpline(knots[start:end],
+                                           limit_knots[start:end])(lam_list[i])  
+                    limit_line_model = \
+                        dmd.linesearch.dm_line(lam_list[i], 
+                                               fixed_list[i], limit_rate)
+                    ax_fullspec.plot(lam_list[i], limit_continuum_model,
+                                     color='black', linestyle='-', marker='',
+                                     linewidth=2, alpha=1)
+                    ax_fullspec.axvline(lam0, linestyle='dotted', 
+                                        color='black', alpha=0.5)
                     
                 # ax_fullspec.set_aspect(2)
                 ax_fullspec.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
@@ -154,17 +157,28 @@ if __name__ == "__main__":
                     ax_resid.axvline(lam0, linestyle='dotted', color='black', alpha=0.5)
                 # limiting model 
                 print(F"plotting {color}")
-                limit_continuum_model = interp.CubicSpline(knots[start:end], 
-                                                        limit_knots[start:end])
-                model = (limit_continuum_model(lam_list[i]) + 
-                        dmd.linesearch.dm_line(lam_list[i], fixed_list[i], limit_rate))
-                ax_zoom.plot(lam_list[i], model, 
+                limit_continuum_model = interp.CubicSpline(
+                    knots[start:end], limit_knots[start:end])
+                linewidth = \
+                    lam_list[i][np.abs(lam_list[i] - lam0) < lam0*0.002]
+                limit_line_model = \
+                        dmd.linesearch.dm_line(linewidth, 
+                                               fixed_list[i], limit_rate)
+                ax_zoom.plot(lam_list[i], limit_continuum_model(lam_list[i]), 
                         color=color, linestyle=style, marker='', 
                         linewidth=2, alpha=0.8)
+                total_model = limit_continuum_model(linewidth) + limit_line_model
+                ax_zoom.plot(linewidth, total_model, 
+                             color="darkgreen", linestyle=style, marker='', 
+                             linewidth=2, alpha=0.8)
 
                 # residuals 
-                ax_resid.step(lam_list[i], sky_list[i] - model, 
+                ax_resid.step(lam_list[i], 
+                              sky_list[i] - limit_continuum_model(lam_list[i]), 
                         color=color, linestyle=style, marker='', 
+                        linewidth=2, alpha=0.8)
+                ax_resid.step(linewidth, limit_line_model, 
+                        color="darkgreen", linestyle=style, marker='', 
                         linewidth=2, alpha=0.8)
 
     margin = 0.001
