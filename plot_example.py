@@ -17,10 +17,6 @@ if __name__ == "__main__":
     config_filename = sys.argv[1]    
     to_plot = sys.argv[2]
     lams = np.asarray(sys.argv[3:], dtype=float)
-    try:
-        plot_yrange = map(float, sys.argv[5:7])
-    except:
-        plot_yrange = None
     configs = dmd.prep.parse_configs(config_filename)
     num_knots = configs["analysis"]["num_knots"]
     
@@ -45,7 +41,8 @@ if __name__ == "__main__":
     ax_zoom = fig.add_subplot(gs_zoom[3:6, :])
     ax_resid = fig.add_subplot(gs_zoom[6, :])
 
-    dofs = [5, 15]
+    configs["analysis"]["width_factor"] = 75
+    dofs = [5]
     styles = ["solid", "dotted"]
     colors = ["firebrick", "mediumblue"]
     for lam0, color in zip(lams, colors):
@@ -91,6 +88,8 @@ if __name__ == "__main__":
                 F"     best_g = {best_g:0.2e} GeV^{-1}\n"
                 F"    limit_g = {limit_g:0.2e} GeV^{-1}\n"
                 F"noise_rescale = {error_scale_factors}")
+            dof = sum([np.sum(~mask) for mask in mask_list])
+            print(F"         dof = {dof}")
 
             pc_input = [raw_out[9], raw_out[7], raw_out[8], 
                         raw_out[2], raw_out[5][1], raw_out[1]]
@@ -167,7 +166,8 @@ if __name__ == "__main__":
                 ax_zoom.plot(lam_list[i], limit_continuum_model(lam_list[i]), 
                         color=color, linestyle=style, marker='', 
                         linewidth=2, alpha=0.8)
-                total_model = limit_continuum_model(linewidth) + limit_line_model
+                total_model = (limit_continuum_model(linewidth) + 
+                               1.5*(5/2)*limit_line_model)
                 ax_zoom.plot(linewidth, total_model, 
                              color="darkgreen", linestyle=style, marker='', 
                              linewidth=2, alpha=0.8)
@@ -184,15 +184,18 @@ if __name__ == "__main__":
     margin = 0.001
     ax_zoom.set_xlim(lam_list[0][0]*(1-margin), lam_list[0][-1]*(1+margin))
     ax_resid.set_xlim(lam_list[0][0]*(1-margin), lam_list[0][-1]*(1+margin))
-    if plot_yrange is not None:
-        ax_zoom.set_ylim(*plot_yrange)
+    lower = np.min(sky_list[i] - np.median(error_list[i]))
+    upper = np.max(sky_list[i] + np.median(error_list[i]))
+    height = upper - lower
+    gap = 0.5*height
+    ax_zoom.set_ylim(lower - gap, upper + gap)
     # ax_zoom.set_aspect(1)
     ax_resid.set_xlabel(r"$\displaystyle \lambda \; [\mu{\rm \tiny m}]$", 
                 fontsize=18)
     ax_resid.set_ylabel(r"$\displaystyle {\rm residual}$", fontsize=18)
     ax_zoom.set_ylabel(r"$\displaystyle \Phi \; [{\rm MJy/sr}]$", 
                 fontsize=18)
-    ax_zoom.set_yticks([0.09, 0.11, 0.13])
+    # ax_zoom.set_yticks([0.09, 0.11, 0.13])
     ax_zoom.tick_params(axis='both', which='major', labelsize=16)
     # ax_zoom.set_ylim(0.08, 0.14)
     ax_resid.set_yticks([-0.01, 0, 0.01])
