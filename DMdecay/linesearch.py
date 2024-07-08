@@ -7,6 +7,7 @@ import copy
 import multiprocessing as mltproc  
 import functools
 import json  
+from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
 import numpy as np 
@@ -16,6 +17,7 @@ import scipy.integrate as integ
 
 from . import conversions as convert 
 from . import halo
+from . import prep
 from nestedtolist import nestedtolist
 
 
@@ -74,6 +76,46 @@ def rate_func(knot_values, best_rate, knots, fixed_list,
         return -sol.root
     else:
         return -best_rate
+
+
+@dataclass
+class LineSearch:
+    specset: prep.SpecSet
+    configs: dict
+    lam0: float
+    mask: list
+
+
+def new_linesearch(specset, configs, lam0):
+    mask = get_search_region(specset, configs, lam0)
+    return LineSearch(specset, configs, lam0, mask)
+
+
+def get_search_region(specset, configs, lam0):
+    mask = []
+    for i in range(specset.N_specs):
+        linewidth = np.sqrt(specset.inst_res[i]**2 + 
+                            (lam0*configs["halo"]["sigma_v"])**2)
+        window = linewidth*configs["analysis"]["width_factor"]
+        lmin = lam0 - 0.5*window
+        lmax = lam0 + 0.5*window
+        if ((lam0 < specset.lam_limits[i, 0]) or 
+            (lam0 > specset.lam_limits[i, 1])):
+            mask.append(np.zeros(specset.N_pts[i], dtype=bool))
+            continue
+        if lmin < specset.lam_limits[i, 0]:
+            l_left = specset.lam_limits[i, 0]
+            l_right = l_left + window
+        elif specset.lam_limits[i, 1] < lmax:
+            l_right = specset.lam_limits[i, 1]
+            l_left = l_right - window
+        else:
+            l_left = lmin
+            l_right = lmax
+        mask.append((l_left < specset.lam[i]) & 
+                    (specset.lam[i] < l_right))
+    return mask
+
 
 def find_raw_limit(configs, data, lam0):
     padding = configs["analysis"]["padding"]

@@ -1,12 +1,14 @@
 """ 
-Parse JWST datfiles
+Prepare data and setup analysis 
 """
 
 
 import os 
 import tomli
+from dataclasses import dataclass
 
 import numpy as np
+import matplotlib.pyplot as plt
 import astropy.io as io
 import astropy.table as table
 import astropy.coordinates as coord
@@ -64,6 +66,7 @@ def doppler_correction(spec, frame):
     # model spectra are rescaled identically
     return
 
+
 def add_Dfactor(spec, frame):
     D_unitless = halo.compute_halo_Dfactor(spec["b"], spec["l"], 
                                            halo.NFWprofile, 
@@ -71,6 +74,7 @@ def add_Dfactor(spec, frame):
     spec["D"] = D_unitless*frame["rho_s"]*frame["r_s"]
     return 
     
+
 def get_fits_from_tree(datadir):
     """ get all *.fits files from directory tree starting at datadir """
     datafile_paths = []
@@ -79,6 +83,7 @@ def get_fits_from_tree(datadir):
                            for f in current_filenames
                            if f[-5:]==".fits"]
     return datafile_paths
+
 
 def get_mass_samples(data, configs):    
     # generate mass sampling
@@ -95,4 +100,71 @@ def get_mass_samples(data, configs):
     return test_lams
 
 
+@dataclass
+class SpecSet:
+    """ A set of blank sky spectra"""
+    N_specs: int
+    flux: list
+    error: list
+    lam: list
+    N_pts: np.ndarray
+    lam_limits: np.ndarray
+    galactic_coords: np.ndarray
+    int_time: np.ndarray
+    inst_res: np.ndarray
+    v_rel: np.ndarray
+    D: np.ndarray
+
+    def plot(self, ax=None, error_band=0.5, mask=None,
+             distinct_plot_args=None, **common_plot_args):
+        """ plot all spectra in the set """
+        if ax is None:
+            fig, ax = plt.subplots()
+        if distinct_plot_args is None:
+            distinct_plot_args = [{}]*self.N_specs
+        for i in range(self.N_specs):
+            mask_i = np.ones(self.N_pts[i], dtype=bool) if mask is None \
+                     else mask[i]
+            lines = ax.step(self.lam[i][mask_i], self.flux[i][mask_i], 
+                            where="mid", **distinct_plot_args[i], 
+                            **common_plot_args)
+            if error_band:
+                ax.fill_between(self.lam[i][mask_i], 
+                                self.flux[i][mask_i] - self.error[i][mask_i], 
+                                self.flux[i][mask_i] + self.error[i][mask_i], 
+                                color=lines[0].get_color(), 
+                                step='mid', alpha=error_band)
+        return ax
+
+
+def SpecSetfromList(list_of_dicts):
+    """ 
+    Create a SpecSet from a list of spectra, each stored as a dictionary
+    """
+    N_specs = len(list_of_dicts)
+    N_pts = np.zeros(N_specs, dtype=int)
+    lam_limits = np.zeros((N_specs, 2))
+    galactic_coords = np.zeros((N_specs, 2))
+    int_time = np.zeros(N_specs)
+    inst_res = np.zeros(N_specs)
+    v_rel = np.zeros(N_specs)
+    D = np.zeros(N_specs)
+    lam, flux, error = [], [], []
+    for i, d in enumerate(list_of_dicts):
+        N_pts[i] = len(d['sky'])
+        print(N_pts[i])
+        lam_limits[i] = [np.min(d['lam']), np.max(d['lam'])]
+        galactic_coords[i] = [d['b'], d['l']]
+        int_time[i] = d['int_time']
+        inst_res[i] = d['res']
+        v_rel[i] = d['v_rel']
+        D[i] = d['D']
+        lam.append(d['lam'])
+        flux.append(d['sky'])
+        error.append(d['error'])
+    return SpecSet(N_specs=N_specs, flux=flux, error=error,
+                   lam=lam, N_pts=N_pts, lam_limits=lam_limits,
+                   galactic_coords=galactic_coords,
+                   int_time=int_time, inst_res=inst_res,
+                   v_rel=v_rel, D=D)
 
