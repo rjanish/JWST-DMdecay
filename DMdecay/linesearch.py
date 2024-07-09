@@ -80,41 +80,79 @@ def rate_func(knot_values, best_rate, knots, fixed_list,
 
 @dataclass
 class LineSearch:
-    specset: prep.SpecSet
-    configs: dict
+    """ Setup params for search for a DM line on a smooth background """
+    data: prep.SpecSet
+    width_factor : float 
+    padding : float 
+    num_knots : int
+    chisq_step : float 
+    limit_guess : np.ndarray
+    max_clip_iters : int
+    clipping_factor : float 
+    Ntrials : int
+    Nbins : int
+    power_threshold : float
+    sigma_v : float
+    # inflate : int = 1
+    # pc_step_factor : int = 1 
+    # checkpoint : int = (500)*np.log10(
+    #     self.data.lam_limits.max()/self.data.lam_limits.min()) 
+    
+    def get_fit_window(self, lam0):
+        """ Return masks for fitting window around lam0 """
+        mask = []
+        for i in range(self.data.N_specs):
+            window_width = np.sqrt(
+                self.data.inst_res[i]**2 + (lam0*self.sigma_v)**2) \
+                *self.width_factor
+            window_min = lam0 - 0.5*window_width
+            window_max = lam0 + 0.5*window_width
+            spec_contains_lam0 = (
+                self.data.lam_limits[i, 0] < lam0 < self.data.lam_limits[i, 1])
+            if spec_contains_lam0:
+                if window_min < self.data.lam_limits[i, 0]:
+                    l_left = self.data.lam_limits[i, 0]
+                    l_right = l_left + window_width
+                elif self.data.lam_limits[i, 1] < window_max:
+                    l_right = self.data.lam_limits[i, 1]
+                    l_left = l_right - window_width
+                else:
+                    l_left = window_min
+                    l_right = window_max
+                mask.append((l_left < self.data.lam[i]) & 
+                            (self.data.lam[i] < l_right))
+            else:
+                mask.append(np.zeros(self.data.N_pts[i], dtype=bool))
+        return mask
+    
+    def fit_continuum(self, lam0):
+        knots = np.zeros(num_specs*num_knots)
+        initial_knot_values = np.zeros(num_specs*num_knots)
+        for i in range(num_specs):
+            start = i*num_knots
+            end = (i + 1)*num_knots
+            knots[start:end] = np.linspace(lam_list[i][0]*(1 + padding), 
+                                        lam_list[i][-1]*(1 - padding), 
+                                        num_knots)
+            initial_knot_values[start:end] = (
+                interp.interp1d(lam_list[i], sky_list[i])(knots[start:end]))
+        spline_fit = opt.least_squares(
+            spline_residual, initial_knot_values,
+            args=(knots, lam_list, sky_list, raw_error_list))
+        best_knot_values = spline_fit["x"]
+
+    def raw_limit(self, lam0):
+        """ Find raw limit on DM line strength """
+        mask = self.get_fit_window(lam0)
+        results = LineSearchResults(self, lam0, mask)
+        return results 
+
+@dataclass
+class LineSearchResults:
+    """ Results from search for a DM line on a smooth background """
+    setup: LineSearch
     lam0: float
     mask: list
-
-
-def new_linesearch(specset, configs, lam0):
-    mask = get_search_region(specset, configs, lam0)
-    return LineSearch(specset, configs, lam0, mask)
-
-
-def get_search_region(specset, configs, lam0):
-    mask = []
-    for i in range(specset.N_specs):
-        linewidth = np.sqrt(specset.inst_res[i]**2 + 
-                            (lam0*configs["halo"]["sigma_v"])**2)
-        window = linewidth*configs["analysis"]["width_factor"]
-        lmin = lam0 - 0.5*window
-        lmax = lam0 + 0.5*window
-        if ((lam0 < specset.lam_limits[i, 0]) or 
-            (lam0 > specset.lam_limits[i, 1])):
-            mask.append(np.zeros(specset.N_pts[i], dtype=bool))
-            continue
-        if lmin < specset.lam_limits[i, 0]:
-            l_left = specset.lam_limits[i, 0]
-            l_right = l_left + window
-        elif specset.lam_limits[i, 1] < lmax:
-            l_right = specset.lam_limits[i, 1]
-            l_left = l_right - window
-        else:
-            l_left = lmin
-            l_right = lmax
-        mask.append((l_left < specset.lam[i]) & 
-                    (specset.lam[i] < l_right))
-    return mask
 
 
 def find_raw_limit(configs, data, lam0):

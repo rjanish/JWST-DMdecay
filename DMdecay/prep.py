@@ -152,7 +152,6 @@ def SpecSetfromList(list_of_dicts):
     lam, flux, error = [], [], []
     for i, d in enumerate(list_of_dicts):
         N_pts[i] = len(d['sky'])
-        print(N_pts[i])
         lam_limits[i] = [np.min(d['lam']), np.max(d['lam'])]
         galactic_coords[i] = [d['b'], d['l']]
         int_time[i] = d['int_time']
