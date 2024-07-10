@@ -79,9 +79,8 @@ def rate_func(knot_values, best_rate, knots, fixed_list,
 
 
 @dataclass
-class LineSearch:
-    """ Setup params for search for a DM line on a smooth background """
-    data: prep.SpecSet
+class LineSearchSetup:
+    """ Setup params for DM line with smooth background fitting algorithm """
     width_factor : float 
     padding : float 
     num_knots : int
@@ -97,18 +96,35 @@ class LineSearch:
     # pc_step_factor : int = 1 
     # checkpoint : int = (500)*np.log10(
     #     self.data.lam_limits.max()/self.data.lam_limits.min()) 
-    
-    def get_fit_window(self, lam0):
+
+
+@dataclass
+class LineSearcher:
+    """ 
+    Class for performing spectral fits for a DM line with smooth background 
+    """
+    setup: LineSearchSetup
+    data: prep.SpecSet  
+    lam0: float
+
+    def __post_init__(self):
+        window_results = self.get_fit_window()
+        self.mask = window_results["mask"]
+        self.fit_intervals = window_results["fit_intervals"]
+
+    def get_fit_window(self):
         """ Return masks for fitting window around lam0 """
         mask = []
+        fit_intervals = np.full((self.data.N_specs, 2), np.nan)
         for i in range(self.data.N_specs):
-            window_width = np.sqrt(
-                self.data.inst_res[i]**2 + (lam0*self.sigma_v)**2) \
-                *self.width_factor
-            window_min = lam0 - 0.5*window_width
-            window_max = lam0 + 0.5*window_width
+            window_width = self.setup.width_factor*np.sqrt(
+                self.data.inst_res[i]**2 + 
+                (self.lam0*self.setup.sigma_v)**2)
+            window_min = self.lam0 - 0.5*window_width
+            window_max = self.lam0 + 0.5*window_width
             spec_contains_lam0 = (
-                self.data.lam_limits[i, 0] < lam0 < self.data.lam_limits[i, 1])
+                self.data.lam_limits[i, 0] < self.lam0 \
+                < self.data.lam_limits[i, 1])
             if spec_contains_lam0:
                 if window_min < self.data.lam_limits[i, 0]:
                     l_left = self.data.lam_limits[i, 0]
@@ -121,38 +137,25 @@ class LineSearch:
                     l_right = window_max
                 mask.append((l_left < self.data.lam[i]) & 
                             (self.data.lam[i] < l_right))
+                fit_intervals[i] = [l_left, l_right]
             else:
                 mask.append(np.zeros(self.data.N_pts[i], dtype=bool))
-        return mask
+        return {"mask": mask, "fit_intervals": fit_intervals}
     
-    def fit_continuum(self, lam0):
-        knots = np.zeros(num_specs*num_knots)
-        initial_knot_values = np.zeros(num_specs*num_knots)
-        for i in range(num_specs):
-            start = i*num_knots
-            end = (i + 1)*num_knots
-            knots[start:end] = np.linspace(lam_list[i][0]*(1 + padding), 
-                                        lam_list[i][-1]*(1 - padding), 
-                                        num_knots)
-            initial_knot_values[start:end] = (
-                interp.interp1d(lam_list[i], sky_list[i])(knots[start:end]))
+    def fit_continuum(self):
+        """ Fit cubic spline to spectrum """
+        outer_knot_locations = \
+            self.fit_intervals*np.array([1 - self.padding, 1 + self.padding])
+        knot_locations = np.linspace(*outer_knot_locations.T, self.num_knots).T
+        initial_knot_values = np.zeros(knot_locations.shape)
+        for i in range(self.data.N_specs):
+            initial_knot_values[i, :] = np.median(self.data.flux[i])
         spline_fit = opt.least_squares(
-            spline_residual, initial_knot_values,
-            args=(knots, lam_list, sky_list, raw_error_list))
-        best_knot_values = spline_fit["x"]
+            spline_residual, initial_knot_values.flatten(),
+            args=(knot_locations, self.data, self.mask),
+            method='lm')
+        return spline_fit["x"].reshape(knot_locations.shape)
 
-    def raw_limit(self, lam0):
-        """ Find raw limit on DM line strength """
-        mask = self.get_fit_window(lam0)
-        results = LineSearchResults(self, lam0, mask)
-        return results 
-
-@dataclass
-class LineSearchResults:
-    """ Results from search for a DM line on a smooth background """
-    setup: LineSearch
-    lam0: float
-    mask: list
 
 
 def find_raw_limit(configs, data, lam0):
