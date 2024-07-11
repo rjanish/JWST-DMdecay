@@ -11,7 +11,7 @@ def MWDecayFlux(lam, lam0, decay_rate, D, sigma_lam):
 	""" 
 	Flux due to DM decays along a line-of-sight with
 	the given D-factor, assuming a Guassian (in wavelength)
-	spectral response with the given width. 
+	spectral response with the given std width sigam_lam. 
 	"""
 	arg = (lam - lam0).T/sigma_lam
 	norm = sigma_lam*np.sqrt(2*np.pi)
