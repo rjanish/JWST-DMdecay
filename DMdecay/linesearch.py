@@ -108,13 +108,17 @@ class LineSearcher:
     lam0: float
 
     def __post_init__(self):
-        self.linewidth = self.net_linewidth()
+        self.linewidth = self.get_net_linewidth()
         window_results = self.get_fit_window()
         self.mask = window_results["mask"]
         self.fit_intervals = window_results["fit_intervals"]
+        self.to_fit = np.nonzero(
+            np.all(np.isfinite(self.fit_intervals), axis=1))[0]
+        self.lams_to_fit = [self.data.lam[i][self.mask[i]] 
+                            for i in range(self.data.N_specs)]
         self.knot_locs = self.get_spline_knot_locations()
 
-    def net_linewidth(self):
+    def get_net_linewidth(self):
         """ 
         Return net DM linewidth (std) at lam0, combining the Doppler width 
         and the instrumental resolution (assume both are Gaussian)
@@ -152,33 +156,83 @@ class LineSearcher:
             else:
                 mask.append(np.zeros(self.data.N_pts[i], dtype=bool))
         return {"mask": mask, "fit_intervals": fit_intervals}
-    
-    def spline_plus_line_model(self, knot_locs, knot_vals, decayrate, lam):
-        """ 
-        Model for spectra considting of spline + Gaussian DM line, 
-        evaluated at wavelength lam.  knot_locs and knot_vals are 
-        arrays (N_specs, num_knots) of spline knot locations and values.
-        """
-        spline = interp.CubicSpline(knot_locs, knot_vals)
-        return spline(lam) + dm_line(lam, self.data.D, rate)
 
     def get_spline_knot_locations(self):
         """ fix knot locations for the cubic spline background fit """
-        outer_knot_locs = \
-            self.fit_intervals*np.array([1 - self.padding, 1 + self.padding])
-        return np.linspace(*outer_knot_locs.T, self.num_knots).T
+        pad = np.array([1 + self.setup.padding, 1 - self.setup.padding])
+        outer_knot_locs = self.fit_intervals[self.to_fit]*pad
+        return np.linspace(*outer_knot_locs.T, self.setup.num_knots).T
+    
+    def spline_plus_line_model(self, knot_vals, decayrate, lam):
+        """ 
+        Model for spectra considting of spline + Gaussian DM line, 
+        evaluated at wavelengths lam, which is a list of wavelegnth arrays.  
+        knot_locs and knot_vals are arrays (N_specs, num_knots) of spline 
+        knot locations and values.
+        """
+        out = []
+        for i_model, i_specs in enumerate(self.to_fit):
+            spline_func = interp.CubicSpline(self.knot_locs[i_model], 
+                                             knot_vals[i_model])
+            line = halo.MWDecayFlux(lam[i_specs], self.lam0, 
+                                    decayrate, self.data.D[i_specs], 
+                                    self.linewidth[i_specs])
+            out.append(spline_func(lam[i_specs]) + line)
+        return out
+    
+    def unpack_params(self, params):
+        """ 
+        Unpack (N_to_fit*num_knots,) fitted spline parameters into 
+        a param array (N_to_fit, num_knots)
+        """
+        return params.reshape(self.knot_locs.shape)
+    
+    # def pack_params(self, knot_vals, decayrate=None):
+    #     """ 
+    #     Pack (N_spec, num_knots) spline and optionally (1,) DM line 
+    #     parameter into one param vector of shape either 
+    #     (N_to_fit*num_knots,) or (N_to_fit*num_knots + 1,)
+    #     """
+    #     return np.concatenate((knot_vals.flatten(), [decayrate]))
+    
+    def weighted_residuals(self, knot_vals, decayrate):
+        """ 
+        Return data - model weighted residuals of spline + DM line model,
+        for all of the data points in the fit window   
+        """
+        model = self.spline_plus_line_model(knot_vals, decayrate, 
+                                            self.lams_to_fit)
+        out = []
+        for i_model, i_specs in enumerate(self.to_fit):
+            delta = self.data.flux[i_specs][self.mask[i_specs]] - model[i_model]
+            weighted = delta/self.data.error[i_specs][self.mask[i_specs]]
+            out.append(weighted)
+        return out
+    
+    def resid_func_continuum(self, flat_knot_vals):
+        """ 
+        wrapper for weighted_residuals, used for fitting only 
+        the continuum spline 
+        """
+        knot_vals = self.unpack_params(flat_knot_vals)
+        return np.concatenate(self.weighted_residuals(knot_vals, 0.0))
 
+    def chisq(self, knot_vals, decayrate):
+        """ Return chi-squared of spline + DM line model """
+        return np.sum(np.concatenate(
+                self.weighted_residuals(knot_vals, decayrate))**2)
+    
     def fit_continuum(self):
         """ Fit cubic spline to spectrum """
-        init_knot_vals = np.zeros(knot_locs.shape)
-        for i in range(self.data.N_specs):
-            init_knot_vals[i, :] = np.median(self.data.flux[i])
-        spline_fit = opt.least_squares(
-            spline_residual, init_knot_vals.flatten(),
-            args=(knot_locs, self.data, self.mask),
-            method='lm')
-        return spline_fit["x"].reshape(knot_locs.shape)
-
+        if self.to_fit.size == 0:
+            return np.full(self.knot_locs.shape, np.nan)
+        knot_vals = np.full(self.knot_locs.shape, np.nan)
+        for i_model, i_specs in enumerate(self.to_fit):
+            knot_vals[i_model, :] = np.median(self.data.flux[i_specs])
+        resid_func = lambda flat_knots: self.resid_func_continuum(flat_knots)
+        fit = opt.least_squares(resid_func, knot_vals.flatten(), 
+                                method='lm')
+        return self.unpack_params(fit["x"])
 
 
 def find_raw_limit(configs, data, lam0):
