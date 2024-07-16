@@ -117,6 +117,11 @@ class LineSearcher:
         self.lams_to_fit = [self.data.lam[i][self.mask[i]] 
                             for i in range(self.data.N_specs)]
         self.knot_locs = self.get_spline_knot_locations()
+        self.knot_vals_init, self.decayrate_init = self.set_initial_guesses()
+        self.dof_continuum_plus_line = \
+            np.sum([np.sum(mask) for mask in self.mask]) \
+            - (self.knot_locs.size + 1)
+        self.dof_continuum_only = self.dof_continuum_plus_line + 1
 
     def get_net_linewidth(self):
         """ 
@@ -180,20 +185,16 @@ class LineSearcher:
             out.append(spline_func(lam[i_specs]) + line)
         return out
     
-    def unpack_params(self, params):
+    def unpack_params(self, params, decay):
         """ 
-        Unpack (N_to_fit*num_knots,) fitted spline parameters into 
-        a param array (N_to_fit, num_knots)
+        Unpack 1D array of all fitting parameters into a distinct 2D array of
+        spline parameters and a single DM decay rate scalar.  The DM decay rate
+        is optional, depending on the decay flag.
         """
-        return params.reshape(self.knot_locs.shape)
-    
-    # def pack_params(self, knot_vals, decayrate=None):
-    #     """ 
-    #     Pack (N_spec, num_knots) spline and optionally (1,) DM line 
-    #     parameter into one param vector of shape either 
-    #     (N_to_fit*num_knots,) or (N_to_fit*num_knots + 1,)
-    #     """
-    #     return np.concatenate((knot_vals.flatten(), [decayrate]))
+        if decay:
+            return params[:-1].reshape(self.knot_locs.shape), params[-1]
+        else:
+            return params.reshape(self.knot_locs.shape)
     
     def weighted_residuals(self, knot_vals, decayrate):
         """ 
@@ -209,30 +210,54 @@ class LineSearcher:
             out.append(weighted)
         return out
     
-    def resid_func_continuum(self, flat_knot_vals):
+    def resid_func_continuum(self, flat_knot_vals, decay):
         """ 
-        wrapper for weighted_residuals, used for fitting only 
-        the continuum spline 
+        wrapper for weighted_residuals to pass to scipy least_squares, 
+        decay flag indicates inclusion of DM line in the fit 
         """
-        knot_vals = self.unpack_params(flat_knot_vals)
-        return np.concatenate(self.weighted_residuals(knot_vals, 0.0))
+        unpacked = self.unpack_params(flat_knot_vals, decay)
+        if decay:
+            knot_vals, decayrate = unpacked
+        else:
+            knot_vals = unpacked
+            decayrate = 0.0
+        return np.concatenate(self.weighted_residuals(knot_vals, decayrate))
 
     def chisq(self, knot_vals, decayrate):
         """ Return chi-squared of spline + DM line model """
-        return np.sum(np.concatenate(
-                self.weighted_residuals(knot_vals, decayrate))**2)
+        resids = self.weighted_residuals(knot_vals, decayrate)
+        if len(resids) == 0:
+            return np.nan
+        else:
+            return np.sum(np.concatenate(resids)**2)
+    
+    def set_initial_guesses(self):
+        """ Set initial fitting guesses for spline and DM line parameters """
+        knot_vals = np.full(self.knot_locs.shape, np.nan)
+        for i_model, i_specs in enumerate(self.to_fit):
+            knot_vals[i_model, :] = np.median(self.data.flux[i_specs])
+        return knot_vals, 0.0
     
     def fit_continuum(self):
         """ Fit cubic spline to spectrum """
         if self.to_fit.size == 0:
             return np.full(self.knot_locs.shape, np.nan)
-        knot_vals = np.full(self.knot_locs.shape, np.nan)
-        for i_model, i_specs in enumerate(self.to_fit):
-            knot_vals[i_model, :] = np.median(self.data.flux[i_specs])
-        resid_func = lambda flat_knots: self.resid_func_continuum(flat_knots)
-        fit = opt.least_squares(resid_func, knot_vals.flatten(), 
+        fit = opt.least_squares(self.resid_func_continuum, 
+                                self.knot_vals_init.flatten(), 
+                                args=(False,), # do not include DM line
                                 method='lm')
-        return self.unpack_params(fit["x"])
+        return self.unpack_params(fit["x"], decay=False)
+    
+    def fit_continuum_plus_line(self):
+        """ Fit cubic spline plus DM line to spectrum """
+        if self.to_fit.size == 0:
+            return np.full(self.knot_locs.shape, np.nan), np.nan
+        params_init = np.concatenate((self.knot_vals_init.flatten(), 
+                                      [self.decayrate_init]))
+        fit = opt.least_squares(self.resid_func_continuum, params_init, 
+                                args=(True,), # include DM line
+                                method='lm')                                
+        return self.unpack_params(fit["x"], decay=True)
 
 
 def find_raw_limit(configs, data, lam0):
