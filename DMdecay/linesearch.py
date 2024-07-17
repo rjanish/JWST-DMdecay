@@ -108,7 +108,7 @@ class LineSearcher:
     lam0: float
 
     def __post_init__(self):
-        self.linewidth = self.get_net_linewidth()
+        self.linewidth = self.find_net_linewidths()
         window_results = self.get_fit_window()
         self.mask = window_results["mask"]
         self.fit_intervals = window_results["fit_intervals"]
@@ -123,15 +123,16 @@ class LineSearcher:
             - (self.knot_locs.size + 1)
         self.dof_continuum_only = self.dof_continuum_plus_line + 1
 
-    def get_net_linewidth(self):
+    def find_net_linewidths(self):
         """ 
         Return net DM linewidth (std) at lam0, combining the Doppler width 
         and the instrumental resolution (assume both are Gaussian)
         """
         linewidth = np.full(self.data.N_specs, np.nan)
         for i in range(self.data.N_specs):
-            linewidth[i] = np.sqrt(self.data.inst_res[i]**2 + 
-                                   (self.lam0*self.setup.sigma_v)**2)
+            linewidth[i] = halo.net_linewidth(self.data.inst_res[i],
+                                              self.setup.sigma_v,
+                                              self.lam0)
         return linewidth
 
     def get_fit_window(self):

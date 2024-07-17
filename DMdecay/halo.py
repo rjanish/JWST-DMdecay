@@ -7,6 +7,9 @@ def sigma_from_fwhm(fwhm, lam0, sigma_v):
     sigma_inst = fwhm/(2*np.sqrt(2*np.log(2)))
     return np.sqrt(sigma_inst**2 + (lam0*sigma_v)**2)
 
+def net_linewidth(inst_res, sigma_v, lam0):
+    return np.sqrt(inst_res**2 + (lam0*sigma_v)**2)
+
 def MWDecayFlux(lam, lam0, decay_rate, D, sigma_lam):
 	""" 
 	Flux due to DM decays along a line-of-sight with

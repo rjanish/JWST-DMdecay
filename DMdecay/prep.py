@@ -114,7 +114,32 @@ class SpecSet:
     inst_res: np.ndarray
     v_rel: np.ndarray
     D: np.ndarray
+    sigma_v: np.ndarray
 
+    def replace_flux(self, new_flux):
+        new_args = self.__dict__.copy()
+        new_args["flux"] = new_flux
+        return SpecSet(**new_args)
+
+    def add_DM_line(self, decayrate, lam0):
+        new_flux = []
+        for i in range(self.N_specs):
+            linewidth = halo.net_linewidth(self.inst_res[i], 
+                                           self.sigma_v[i], lam0)
+            new_flux.append(
+                self.flux[i] \
+                + halo.MWDecayFlux(self.lam[i], lam0, decayrate, 
+                                   self.D[i], linewidth)
+            )
+        return self.replace_flux(new_flux)
+        
+    def resample_flux(self, seed=None):
+        rng = np.random.default_rng(seed)
+        new_flux = []
+        for i in range(self.N_specs):
+            new_flux.append(rng.normal(self.flux[i], self.error[i]))
+        return self.replace_flux(new_flux)
+        
     def plot(self, ax=None, error_band=0.5, mask=None,
              distinct_plot_args=None, **common_plot_args):
         """ plot all spectra in the set """
@@ -149,6 +174,7 @@ def SpecSetfromList(list_of_dicts):
     inst_res = np.zeros(N_specs)
     v_rel = np.zeros(N_specs)
     D = np.zeros(N_specs)
+    sigma_v = np.zeros(N_specs)
     lam, flux, error = [], [], []
     for i, d in enumerate(list_of_dicts):
         N_pts[i] = len(d['sky'])
@@ -157,6 +183,7 @@ def SpecSetfromList(list_of_dicts):
         int_time[i] = d['int_time']
         inst_res[i] = d['res']
         v_rel[i] = d['v_rel']
+        sigma_v[i] = d['sigma_v']
         D[i] = d['D']
         lam.append(d['lam'])
         flux.append(d['sky'])
@@ -165,5 +192,5 @@ def SpecSetfromList(list_of_dicts):
                    lam=lam, N_pts=N_pts, lam_limits=lam_limits,
                    galactic_coords=galactic_coords,
                    int_time=int_time, inst_res=inst_res,
-                   v_rel=v_rel, D=D)
+                   v_rel=v_rel, D=D, sigma_v=sigma_v)
 
