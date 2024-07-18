@@ -259,6 +259,12 @@ class LineSearcher:
                                 args=(True,), # include DM line
                                 method='lm')                                
         return self.unpack_params(fit["x"], decay=True)
+    
+    def get_plot_limits(self, margin=0.02):
+        """ Return plot limits for the union of all fit windows """
+        left = self.fit_intervals[self.to_fit, 0].min()
+        right = self.fit_intervals[self.to_fit, 1].max()
+        return left*(1 - margin), right*(1 + margin)
 
 
 def find_raw_limit(configs, data, lam0):

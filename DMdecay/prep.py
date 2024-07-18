@@ -116,9 +116,9 @@ class SpecSet:
     D: np.ndarray
     sigma_v: np.ndarray
 
-    def replace_flux(self, new_flux):
+    def replace_data(self, name, new_data):
         new_args = self.__dict__.copy()
-        new_args["flux"] = new_flux
+        new_args[name] = new_data
         return SpecSet(**new_args)
 
     def add_DM_line(self, decayrate, lam0):
@@ -131,14 +131,20 @@ class SpecSet:
                 + halo.MWDecayFlux(self.lam[i], lam0, decayrate, 
                                    self.D[i], linewidth)
             )
-        return self.replace_flux(new_flux)
-        
+        return self.replace_data("flux", new_flux)
+
+    def rescale_error(self, scale=1):
+        new_error = []
+        for i in range(self.N_specs):
+            new_error.append(scale*self.error[i])
+        return self.replace_data("error", new_error)
+
     def resample_flux(self, seed=None):
         rng = np.random.default_rng(seed)
         new_flux = []
         for i in range(self.N_specs):
             new_flux.append(rng.normal(self.flux[i], self.error[i]))
-        return self.replace_flux(new_flux)
+        return self.replace_data("flux", new_flux)
         
     def plot(self, ax=None, error_band=0.5, mask=None,
              distinct_plot_args=None, **common_plot_args):
