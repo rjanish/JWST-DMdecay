@@ -272,7 +272,17 @@ class LineSearcher:
         [self.bf_knot_vals, 
          self.bf_decay_rate] = self.unpack_params(fit["x"], decay=True)
         return self.bf_knot_vals, self.bf_decay_rate
-
+    
+    def fit_line(self, knot_vals):
+        """ Fit DM line only with fixed continuum """
+        if self.to_fit.size == 0:
+            return np.nan
+        new_resid = lambda dr: self.resid_func_continuum(
+            np.concatenate((knot_vals.flatten(), dr)), True)
+        fit = opt.least_squares(new_resid, np.array([0.0]), 
+                                method='lm')
+        return fit["x"][0]
+    
     def get_plot_limits(self, margin=0.02):
         """ Return plot limits for the union of all fit windows """
         left = self.fit_intervals[self.to_fit, 0].min()
