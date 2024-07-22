@@ -235,9 +235,12 @@ class LineSearcher:
     def set_initial_guesses(self):
         """ Set initial fitting guesses for spline and DM line parameters """
         knot_vals = np.full(self.knot_locs.shape, np.nan)
+        decay_rate = 0.0
         for i_model, i_specs in enumerate(self.to_fit):
             knot_vals[i_model, :] = np.median(self.data.flux[i_specs])
-        return knot_vals, 0.0
+            decay_rate = np.mean([decay_rate, 
+                                  np.median(self.data.error[i_specs])])
+        return knot_vals, decay_rate
     
     def fit_continuum(self):
         """ Fit cubic spline to spectrum """
@@ -249,17 +252,27 @@ class LineSearcher:
                                 method='lm')
         return self.unpack_params(fit["x"], decay=False)
     
-    def fit_continuum_plus_line(self):
+    def fit_continuum_plus_line(self, try_unconstrained=True):
         """ Fit cubic spline plus DM line to spectrum """
         if self.to_fit.size == 0:
             return np.full(self.knot_locs.shape, np.nan), np.nan
         params_init = np.concatenate((self.knot_vals_init.flatten(), 
                                       [self.decayrate_init]))
-        fit = opt.least_squares(self.resid_func_continuum, params_init, 
-                                args=(True,), # include DM line
-                                method='lm')                                
-        return self.unpack_params(fit["x"], decay=True)
-    
+        if try_unconstrained:
+            fit = opt.least_squares(self.resid_func_continuum, params_init, 
+                                    args=(True,), # include DM line
+                                    method='lm')        
+            self.pos_line = fit["x"][-1] < 0
+        if (not try_unconstrained) or (not self.pos_line):
+            bounds = np.full((params_init.size, 2), [-np.inf, np.inf])
+            bounds[-1, 0] = 0.0 # enforce positive decay rate
+            fit = opt.least_squares(self.resid_func_continuum, params_init, 
+                                    args=(True,), # include DM line
+                                    bounds=bounds.T, method='trf')        
+        [self.bf_knot_vals, 
+         self.bf_decay_rate] = self.unpack_params(fit["x"], decay=True)
+        return self.bf_knot_vals, self.bf_decay_rate
+
     def get_plot_limits(self, margin=0.02):
         """ Return plot limits for the union of all fit windows """
         left = self.fit_intervals[self.to_fit, 0].min()
