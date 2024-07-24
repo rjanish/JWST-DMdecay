@@ -232,6 +232,33 @@ class LineSearcher:
         else:
             return np.sum(np.concatenate(resids)**2)
     
+    def decayrate_ci_from_chisq(self, delta, max_iter=100):
+        """ 
+        find the confidence interval on the inferred decayrate
+        resulting from solving chisq - chisq_min = delta
+        """
+        try:
+            chisq_min = self.chisq(self.bf_knot_vals, self.bf_decay_rate)
+        except AttributeError:
+            self.fit_continuum_plus_line()
+            chisq_min = self.chisq(self.bf_knot_vals, self.bf_decay_rate)
+        delta_chisq = lambda dr: \
+            self.chisq(self.bf_knot_vals, dr) - chisq_min - delta
+        ci = np.array([0.0, 0.0])
+        if delta_chisq(0.0) > delta:
+            sol = opt.root_scalar(delta_chisq, 
+                                  bracket=[0.0, self.bf_decay_rate])
+            ci[0] = sol.root
+        dr_max = self.bf_decay_rate*2
+        i = 0
+        while (i <= max_iter) and (delta_chisq(dr_max) < delta):
+            dr_max *= 2
+            i += 1
+        sol = opt.root_scalar(delta_chisq, 
+                              bracket=[self.bf_decay_rate, dr_max])
+        ci[1] = sol.root
+        return ci
+
     def set_initial_guesses(self):
         """ Set initial fitting guesses for spline and DM line parameters """
         knot_vals = np.full(self.knot_locs.shape, np.nan)
@@ -242,7 +269,7 @@ class LineSearcher:
                                   np.median(self.data.error[i_specs])])
         return knot_vals, decay_rate
     
-    def fit_continuum(self):
+    def fit_continuum_only(self):
         """ Fit cubic spline to spectrum """
         if self.to_fit.size == 0:
             return np.full(self.knot_locs.shape, np.nan)
@@ -273,7 +300,7 @@ class LineSearcher:
          self.bf_decay_rate] = self.unpack_params(fit["x"], decay=True)
         return self.bf_knot_vals, self.bf_decay_rate
     
-    def fit_line(self, knot_vals):
+    def fit_line_only(self, knot_vals):
         """ Fit DM line only with fixed continuum """
         if self.to_fit.size == 0:
             return np.nan

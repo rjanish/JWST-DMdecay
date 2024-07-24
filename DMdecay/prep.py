@@ -100,6 +100,23 @@ def get_mass_samples(data, configs):
     return test_lams
 
 
+def estimate_poisson_error(flux, lam, t_int, eff=0.5, scale=0.0014):
+    """ 
+    Estimate poisson error on flux - for the scale parameter 
+    see Mathematica notebook 
+    """
+    # get wavelength bin size
+    # compare both direction for robustness against large gaps in wavelength
+    dlam_left = lam[1:-1]-lam[:-2]
+    dlam_right = lam[2:]-lam[1:-1]
+    dlam = np.full(lam.shape, np.nan)
+    dlam[1:-1] = np.min([dlam_left, dlam_right], axis=0)
+    dlam[0] = dlam[1]
+    dlam[-1] = dlam[-2]
+    # get poisson error
+    return scale*np.sqrt(lam*flux/(t_int*dlam*eff))
+
+
 @dataclass
 class SpecSet:
     """ A set of blank sky spectra"""
@@ -123,15 +140,18 @@ class SpecSet:
 
     def add_DM_line(self, decayrate, lam0):
         new_flux = []
+        new_error = []
         for i in range(self.N_specs):
             linewidth = halo.net_linewidth(self.inst_res[i], 
                                            self.sigma_v[i], lam0)
-            new_flux.append(
-                self.flux[i] \
-                + halo.MWDecayFlux(self.lam[i], lam0, decayrate, 
-                                   self.D[i], linewidth)
-            )
-        return self.replace_data("flux", new_flux)
+            line_flux = halo.MWDecayFlux(self.lam[i], lam0, decayrate, 
+                                         self.D[i], linewidth)
+            new_flux.append(self.flux[i] + line_flux)
+            line_error = estimate_poisson_error(line_flux, self.lam[i], 
+                                                self.int_time[i])
+            new_error.append(np.sqrt(self.error[i]**2 + line_error**2))
+        return self.replace_data("flux", new_flux)\
+                   .replace_data("error", new_error)
 
     def rescale_error(self, scale=1):
         new_error = []
