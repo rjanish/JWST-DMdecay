@@ -224,8 +224,12 @@ class LineSearcher:
             decayrate = 0.0
         return np.concatenate(self.weighted_residuals(knot_vals, decayrate))
 
-    def chisq(self, knot_vals, decayrate):
+    def chisq(self, knot_vals=None, decayrate=None):
         """ Return chi-squared of spline + DM line model """
+        if knot_vals is None:
+            knot_vals = self.bf_knot_vals
+        if decayrate is None:
+            decayrate = self.bf_decay_rate
         resids = self.weighted_residuals(knot_vals, decayrate)
         if len(resids) == 0:
             return np.nan
@@ -237,25 +241,28 @@ class LineSearcher:
         find the confidence interval on the inferred decayrate
         resulting from solving chisq - chisq_min = delta
         """
+        # set minimum chisq
         try:
-            chisq_min = self.chisq(self.bf_knot_vals, self.bf_decay_rate)
+            chisq_min = self.chisq()
         except AttributeError:
             self.fit_continuum_plus_line()
-            chisq_min = self.chisq(self.bf_knot_vals, self.bf_decay_rate)
-        delta_chisq = lambda dr: \
-            self.chisq(self.bf_knot_vals, dr) - chisq_min - delta
+            chisq_min = self.chisq()
+        # setup
+        delta_chisq = lambda dr: self.chisq(decayrate=dr) - chisq_min - delta
         ci = np.array([0.0, 0.0])
+        # find left side bound
         if delta_chisq(0.0) > delta:
-            sol = opt.root_scalar(delta_chisq, 
-                                  bracket=[0.0, self.bf_decay_rate])
+            bounds_left = [0.0, self.bf_decay_rate]
+            sol = opt.root_scalar(delta_chisq, bracket=bounds_left)
             ci[0] = sol.root
+        # find right side bound
         dr_max = self.bf_decay_rate*2
         i = 0
         while (i <= max_iter) and (delta_chisq(dr_max) < delta):
             dr_max *= 2
             i += 1
-        sol = opt.root_scalar(delta_chisq, 
-                              bracket=[self.bf_decay_rate, dr_max])
+        bounds_right = [self.bf_decay_rate, dr_max]
+        sol = opt.root_scalar(delta_chisq, bracket=bounds_right)
         ci[1] = sol.root
         return ci
 
@@ -289,7 +296,7 @@ class LineSearcher:
             fit = opt.least_squares(self.resid_func_continuum, params_init, 
                                     args=(True,), # include DM line
                                     method='lm')        
-            self.pos_line = fit["x"][-1] < 0
+            self.pos_line = fit["x"][-1] > 0
         if (not try_unconstrained) or (not self.pos_line):
             bounds = np.full((params_init.size, 2), [-np.inf, np.inf])
             bounds[-1, 0] = 0.0 # enforce positive decay rate
